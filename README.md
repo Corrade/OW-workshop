@@ -19,7 +19,7 @@ In the demo you can press `ability 1` to update the position of the object, whic
 
 ## Notes
 ### Motivation
-You can't hit effects with the raycast actions, so to implement this another way I'd imagine you'd have to use raymarching. That's bound to create small delays and pollute the inspector. This method is only one action.
+You can't hit effects with the raycast actions, so to implement the hitscan detection of spheres another way I'd imagine you'd have to use raymarching. That's bound to create small delays and pollute the inspector. This method is only one action.
 
 
 
