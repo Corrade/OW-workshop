@@ -1,4 +1,4 @@
-# Hitscan detection of spheres without raycasting
+# Hitscan detection of spheres without raymarching
 ## code.txt
 This file contains the code snippet that performs the action.
 
@@ -18,6 +18,11 @@ In the demo you can press `ability 1` to update the position of the object, whic
 
 
 ## Notes
+### Motivation
+You can't hit effects with the raycast actions, so to implement this another way I'd imagine you'd have to use raymarching. That's bound to create small delays and pollute the inspector. This method is only one action.
+
+
+
 ### Usage
 Example applications include aim trainers and prop hunt.
 
