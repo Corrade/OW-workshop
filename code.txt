@@ -1,0 +1,74 @@
+And(
+    And(
+        Compare(
+            Distance Between(
+                Vector(0,0,0),
+                Subtract(
+                    Player Variable(Event Player, C),
+                    Add(
+                        Eye Position(Event Player),
+                        Multiply(
+                            Absolute Value(
+                                Dot Product(
+                                    Subtract(
+                                        Player Variable(Event Player, C),
+                                        Eye Position(Event Player)
+                                    ),
+                                    Facing Direction Of(Event Player)
+                                )
+                            ),
+                            Facing Direction Of(Event Player)
+                        )
+                    )
+                )
+            ),
+            <=,
+            Player Variable(Event Player, R)
+        ),
+        Compare(
+            Is In Line of Sight(
+                Add(
+                    Eye Position(Event Player),
+                    Multiply(
+                        Absolute Value(
+                            Dot Product(
+                                Subtract(
+                                    Player Variable(Event Player, C),
+                                    Eye Position(Event Player)
+                                ),
+                                Facing Direction Of(Event Player)
+                            )
+                        ),
+                        Facing Direction Of(Event Player)
+                    )
+                ),
+                Eye Position(Event Player),
+                Enemy Barriers Block LOS
+            ),
+            ==,
+            True
+        )
+    ),
+    Compare(
+        Distance Between(
+            Add(
+                Eye Position(Event Player),
+                Multiply(
+                    Absolute Value(
+                        Dot Product(
+                            Subtract(
+                                Player Variable(Event Player, C),
+                                Eye Position(Event Player)
+                            ),
+                            Facing Direction Of(Event Player)
+                        )
+                    ),
+                    Facing Direction Of(Event Player)
+                )
+                ),
+            Eye Position(Event Player)
+        ),
+        <=,
+        Player Variable(Event Player, A)
+    )
+)
