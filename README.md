@@ -4,7 +4,7 @@ This file contains the code snippet that performs the action.
 
 In this code I'm assuming you'd like to detect hitscan from an event player's eye position in the direction they're facing. If this isn't suitable for your project, please check the [explanation](#explanation) section and make the appropriate changes.
 
-Let player variable `C` (`PV'C`) be the center of the object, `PV'R` be the radius of the object and `PV'A` be the player's maximum range. Then `code.txt` will return `True` if the object is being hit by the event player at the moment of execution, and will return `False` otherwise.
+Let player variable `C` (`pC`) be the center of the object, `pR` be the radius of the object and `pA` be the player's maximum range. Then `code.txt` will return `True` if the object is being hit by the event player at the moment of execution, and will return `False` otherwise.
 
 
 
@@ -20,8 +20,6 @@ In the demo you can press `ability 1` to update the position of the object, whic
 ## Notes
 ### Motivation
 You can't hit effects with the raycast actions, so to implement the hitscan detection of spheres I'd imagine you'd either use raymarching or this method. Raymarching is bound to use loops, which create small delays, pollute the inspector and complicate situations where multiple objects have to be checked. This method is simply one action that returns either `True` or `False` for hit/not hit. It's far cleaner and reduces the task of considering multiple objects to a simple filtered array.
-
-
 
 ### Usage
 Example applications include aim trainers and prop hunt.
