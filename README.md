@@ -10,7 +10,8 @@ gI = temporary variable for updating gG in disconnect cases
 gJ = current stage leading bet
 gK = physical game object info {pot{center, radius}, community card positions[5], card sphere radius, chips/score units above eye level, current bet distance from feet}
 gL = modify bet increment
-gM = deck{cards{value from 2-14, suit from 0-3, center, visible to, effect ID, text ID}}
+// Hence each card has four adjacent values in gM. This unintuitive representation is necessary because  it's impossible to change one specific element in a 2D array.
+gM = deck{value from 2-14, suit from 0-3, center, visible to, ...}
 gN = deal card interface
     gN[0] = trigger
     gN[1] = visible to
@@ -55,14 +56,14 @@ rule("Init global vars")
         Set Global Variable(K, Empty Array);
             Modify Global Variable(K, Append To Array, Empty Array);
                 Modify Global Variable At Index(K, 0, Append To Array, Vector(-210, 0, -18));
-                Modify Global Variable At Index(K, 0, Append To Array, 2);
+                Modify Global Variable At Index(K, 0, Append To Array, 1);
             Modify Global Variable(K, Append To Array, Empty Array);
                 Modify Global Variable At Index(K, 1, Append To Array, Add(Value In Array(Global Variable(K), 0), Vector(1, 0, 0)));
                 Modify Global Variable At Index(K, 1, Append To Array, Add(Value In Array(Global Variable(K), 0), Vector(2, 0, 0)));
                 Modify Global Variable At Index(K, 1, Append To Array, Add(Value In Array(Global Variable(K), 0), Vector(3, 0, 0)));
                 Modify Global Variable At Index(K, 1, Append To Array, Add(Value In Array(Global Variable(K), 0), Vector(4, 0, 0)));
                 Modify Global Variable At Index(K, 1, Append To Array, Add(Value In Array(Global Variable(K), 0), Vector(5, 0, 0)));
-            Modify Global Variable(K, Append To Array, 0.25);
+            Modify Global Variable(K, Append To Array, 0.175);
             Modify Global Variable(K, Append To Array, 0.5);
             Modify Global Variable(K, Append To Array, 1.5);
         Set Global Variable(L, 10);
@@ -96,790 +97,6 @@ rule("Init global vars")
                 Modify Global Variable At Index(P, 4, Append To Array, 0.5);
                 Modify Global Variable At Index(P, 4, Append To Array, 5);
         Set Global Variable(Q, Empty Array);
-    }
-}
-
-rule("Deck generation: init gM")
-{
-    event
-	{
-		Ongoing - Global;
-	}
-
-    conditions
-    {
-        Compare(Global Variable(Q), ==, Empty Array) == True;
-    }
-
-    actions
-    {
-        // gM = deck{cards{value from 2-14, suit from 0-3, center, visible to}}
-        Wait(0.016, Ignore Condition);
-
-        Skip If(Compare(Global Variable(Q), !=, Empty Array), 2);
-        Modify Global Variable(Q, Append To Array, 2);
-        Modify Global Variable(Q, Append To Array, 0);
-        
-        // Loop from gQ[0] = 2-14
-            // Loop from gQ[1] = 0-3
-                // Append to gM gQ[0], gQ[1], gK[0][1], Null
-                Modify Global Variable(M, Append To Array, Empty Array);
-                    Modify Global Variable At Index(M, Add(Multiply(4, Subtract(Value In Array(Global Variable(Q), 0), 2)), Value In Array(Global Variable(Q), 1)), Append To Array, Value In Array(Global Variable(Q), 0));
-                    Modify Global Variable At Index(M, Add(Multiply(4, Subtract(Value In Array(Global Variable(Q), 0), 2)), Value In Array(Global Variable(Q), 1)), Append To Array, Value In Array(Global Variable(Q), 1));
-                    Modify Global Variable At Index(M, Add(Multiply(4, Subtract(Value In Array(Global Variable(Q), 0), 2)), Value In Array(Global Variable(Q), 1)), Append To Array, Value In Array(Value In Array(Global Variable(K), 0), 1));
-                    Modify Global Variable At Index(M, Add(Multiply(4, Subtract(Value In Array(Global Variable(Q), 0), 2)), Value In Array(Global Variable(Q), 1)), Append To Array, Null);
-            Modify Global Variable At Index(Q, 1, Add, 1);
-            Loop If(Compare(Value In Array(Global Variable(Q), 1), <=, 3));
-            Set Global Variable At Index(Q, 1, 0);
-        Modify Global Variable At Index(Q, 0, Add, 1);
-	    Loop If(Compare(Value In Array(Global Variable(Q), 0), <=, 14));
-
-        Set Global Variable(Q, 999);
-    }
-}
-
-rule("Deck generation: create and link objects to their corresponding elements in gM")
-{
-    event
-	{
-		Ongoing - Global;
-	}
-
-    conditions
-    {
-        Compare(Global Variable(Q), ==, 999) == True;
-    }
-
-    actions
-    {
-        // See deck_gen.c
-        Create Effect(
-            Value In Array(Value In Array(Global Variable(M), 1)), 4),
-            Sphere, Red,
-            Value In Array(Value In Array(Global Variable(M), 1)), 3),
-            Value In Array(Global Variable(K), 3),
-            Visible To Position and Radius
-        );
-        Create In-World Text(
-            Value In Array(Value In Array(Global Variable(M), 1)), 4),
-            2,
-            Value In Array(Value In Array(Global Variable(M), 1)), 3),
-            1, Do Not Clip, Visible To Position and String
-        );
-
-        Create Effect(
-            Value In Array(Value In Array(Global Variable(M), 2)), 4),
-            Sphere, Blue,
-            Value In Array(Value In Array(Global Variable(M), 2)), 3),
-            Value In Array(Global Variable(K), 3),
-            Visible To Position and Radius
-        );
-        Create In-World Text(
-            Value In Array(Value In Array(Global Variable(M), 2)), 4),
-            2,
-            Value In Array(Value In Array(Global Variable(M), 2)), 3),
-            1, Do Not Clip, Visible To Position and String
-        );
-
-        Create Effect(
-            Value In Array(Value In Array(Global Variable(M), 3)), 4),
-            Sphere, Yellow,
-            Value In Array(Value In Array(Global Variable(M), 3)), 3),
-            Value In Array(Global Variable(K), 3),
-            Visible To Position and Radius
-        );
-        Create In-World Text(
-            Value In Array(Value In Array(Global Variable(M), 3)), 4),
-            2,
-            Value In Array(Value In Array(Global Variable(M), 3)), 3),
-            1, Do Not Clip, Visible To Position and String
-        );
-
-        Create Effect(
-            Value In Array(Value In Array(Global Variable(M), 4)), 4),
-            Sphere, Green,
-            Value In Array(Value In Array(Global Variable(M), 4)), 3),
-            Value In Array(Global Variable(K), 3),
-            Visible To Position and Radius
-        );
-        Create In-World Text(
-            Value In Array(Value In Array(Global Variable(M), 4)), 4),
-            2,
-            Value In Array(Value In Array(Global Variable(M), 4)), 3),
-            1, Do Not Clip, Visible To Position and String
-        );
-
-        Create Effect(
-            Value In Array(Value In Array(Global Variable(M), 5)), 4),
-            Sphere, Red,
-            Value In Array(Value In Array(Global Variable(M), 5)), 3),
-            Value In Array(Global Variable(K), 3),
-            Visible To Position and Radius
-        );
-        Create In-World Text(
-            Value In Array(Value In Array(Global Variable(M), 5)), 4),
-            3,
-            Value In Array(Value In Array(Global Variable(M), 5)), 3),
-            1, Do Not Clip, Visible To Position and String
-        );
-
-        Create Effect(
-            Value In Array(Value In Array(Global Variable(M), 6)), 4),
-            Sphere, Blue,
-            Value In Array(Value In Array(Global Variable(M), 6)), 3),
-            Value In Array(Global Variable(K), 3),
-            Visible To Position and Radius
-        );
-        Create In-World Text(
-            Value In Array(Value In Array(Global Variable(M), 6)), 4),
-            3,
-            Value In Array(Value In Array(Global Variable(M), 6)), 3),
-            1, Do Not Clip, Visible To Position and String
-        );
-
-        Create Effect(
-            Value In Array(Value In Array(Global Variable(M), 7)), 4),
-            Sphere, Yellow,
-            Value In Array(Value In Array(Global Variable(M), 7)), 3),
-            Value In Array(Global Variable(K), 3),
-            Visible To Position and Radius
-        );
-        Create In-World Text(
-            Value In Array(Value In Array(Global Variable(M), 7)), 4),
-            3,
-            Value In Array(Value In Array(Global Variable(M), 7)), 3),
-            1, Do Not Clip, Visible To Position and String
-        );
-
-        Create Effect(
-            Value In Array(Value In Array(Global Variable(M), 8)), 4),
-            Sphere, Green,
-            Value In Array(Value In Array(Global Variable(M), 8)), 3),
-            Value In Array(Global Variable(K), 3),
-            Visible To Position and Radius
-        );
-        Create In-World Text(
-            Value In Array(Value In Array(Global Variable(M), 8)), 4),
-            3,
-            Value In Array(Value In Array(Global Variable(M), 8)), 3),
-            1, Do Not Clip, Visible To Position and String
-        );
-
-        Create Effect(
-            Value In Array(Value In Array(Global Variable(M), 9)), 4),
-            Sphere, Red,
-            Value In Array(Value In Array(Global Variable(M), 9)), 3),
-            Value In Array(Global Variable(K), 3),
-            Visible To Position and Radius
-        );
-        Create In-World Text(
-            Value In Array(Value In Array(Global Variable(M), 9)), 4),
-            4,
-            Value In Array(Value In Array(Global Variable(M), 9)), 3),
-            1, Do Not Clip, Visible To Position and String
-        );
-
-        Create Effect(
-            Value In Array(Value In Array(Global Variable(M), 10)), 4),
-            Sphere, Blue,
-            Value In Array(Value In Array(Global Variable(M), 10)), 3),
-            Value In Array(Global Variable(K), 3),
-            Visible To Position and Radius
-        );
-        Create In-World Text(
-            Value In Array(Value In Array(Global Variable(M), 10)), 4),
-            4,
-            Value In Array(Value In Array(Global Variable(M), 10)), 3),
-            1, Do Not Clip, Visible To Position and String
-        );
-
-        Create Effect(
-            Value In Array(Value In Array(Global Variable(M), 11)), 4),
-            Sphere, Yellow,
-            Value In Array(Value In Array(Global Variable(M), 11)), 3),
-            Value In Array(Global Variable(K), 3),
-            Visible To Position and Radius
-        );
-        Create In-World Text(
-            Value In Array(Value In Array(Global Variable(M), 11)), 4),
-            4,
-            Value In Array(Value In Array(Global Variable(M), 11)), 3),
-            1, Do Not Clip, Visible To Position and String
-        );
-
-        Create Effect(
-            Value In Array(Value In Array(Global Variable(M), 12)), 4),
-            Sphere, Green,
-            Value In Array(Value In Array(Global Variable(M), 12)), 3),
-            Value In Array(Global Variable(K), 3),
-            Visible To Position and Radius
-        );
-        Create In-World Text(
-            Value In Array(Value In Array(Global Variable(M), 12)), 4),
-            4,
-            Value In Array(Value In Array(Global Variable(M), 12)), 3),
-            1, Do Not Clip, Visible To Position and String
-        );
-
-        Create Effect(
-            Value In Array(Value In Array(Global Variable(M), 13)), 4),
-            Sphere, Red,
-            Value In Array(Value In Array(Global Variable(M), 13)), 3),
-            Value In Array(Global Variable(K), 3),
-            Visible To Position and Radius
-        );
-        Create In-World Text(
-            Value In Array(Value In Array(Global Variable(M), 13)), 4),
-            5,
-            Value In Array(Value In Array(Global Variable(M), 13)), 3),
-            1, Do Not Clip, Visible To Position and String
-        );
-
-        Create Effect(
-            Value In Array(Value In Array(Global Variable(M), 14)), 4),
-            Sphere, Blue,
-            Value In Array(Value In Array(Global Variable(M), 14)), 3),
-            Value In Array(Global Variable(K), 3),
-            Visible To Position and Radius
-        );
-        Create In-World Text(
-            Value In Array(Value In Array(Global Variable(M), 14)), 4),
-            5,
-            Value In Array(Value In Array(Global Variable(M), 14)), 3),
-            1, Do Not Clip, Visible To Position and String
-        );
-
-        Create Effect(
-            Value In Array(Value In Array(Global Variable(M), 15)), 4),
-            Sphere, Yellow,
-            Value In Array(Value In Array(Global Variable(M), 15)), 3),
-            Value In Array(Global Variable(K), 3),
-            Visible To Position and Radius
-        );
-        Create In-World Text(
-            Value In Array(Value In Array(Global Variable(M), 15)), 4),
-            5,
-            Value In Array(Value In Array(Global Variable(M), 15)), 3),
-            1, Do Not Clip, Visible To Position and String
-        );
-
-        Create Effect(
-            Value In Array(Value In Array(Global Variable(M), 16)), 4),
-            Sphere, Green,
-            Value In Array(Value In Array(Global Variable(M), 16)), 3),
-            Value In Array(Global Variable(K), 3),
-            Visible To Position and Radius
-        );
-        Create In-World Text(
-            Value In Array(Value In Array(Global Variable(M), 16)), 4),
-            5,
-            Value In Array(Value In Array(Global Variable(M), 16)), 3),
-            1, Do Not Clip, Visible To Position and String
-        );
-
-        Create Effect(
-            Value In Array(Value In Array(Global Variable(M), 17)), 4),
-            Sphere, Red,
-            Value In Array(Value In Array(Global Variable(M), 17)), 3),
-            Value In Array(Global Variable(K), 3),
-            Visible To Position and Radius
-        );
-        Create In-World Text(
-            Value In Array(Value In Array(Global Variable(M), 17)), 4),
-            6,
-            Value In Array(Value In Array(Global Variable(M), 17)), 3),
-            1, Do Not Clip, Visible To Position and String
-        );
-
-        Create Effect(
-            Value In Array(Value In Array(Global Variable(M), 18)), 4),
-            Sphere, Blue,
-            Value In Array(Value In Array(Global Variable(M), 18)), 3),
-            Value In Array(Global Variable(K), 3),
-            Visible To Position and Radius
-        );
-        Create In-World Text(
-            Value In Array(Value In Array(Global Variable(M), 18)), 4),
-            6,
-            Value In Array(Value In Array(Global Variable(M), 18)), 3),
-            1, Do Not Clip, Visible To Position and String
-        );
-
-        Create Effect(
-            Value In Array(Value In Array(Global Variable(M), 19)), 4),
-            Sphere, Yellow,
-            Value In Array(Value In Array(Global Variable(M), 19)), 3),
-            Value In Array(Global Variable(K), 3),
-            Visible To Position and Radius
-        );
-        Create In-World Text(
-            Value In Array(Value In Array(Global Variable(M), 19)), 4),
-            6,
-            Value In Array(Value In Array(Global Variable(M), 19)), 3),
-            1, Do Not Clip, Visible To Position and String
-        );
-
-        Create Effect(
-            Value In Array(Value In Array(Global Variable(M), 20)), 4),
-            Sphere, Green,
-            Value In Array(Value In Array(Global Variable(M), 20)), 3),
-            Value In Array(Global Variable(K), 3),
-            Visible To Position and Radius
-        );
-        Create In-World Text(
-            Value In Array(Value In Array(Global Variable(M), 20)), 4),
-            6,
-            Value In Array(Value In Array(Global Variable(M), 20)), 3),
-            1, Do Not Clip, Visible To Position and String
-        );
-
-        Create Effect(
-            Value In Array(Value In Array(Global Variable(M), 21)), 4),
-            Sphere, Red,
-            Value In Array(Value In Array(Global Variable(M), 21)), 3),
-            Value In Array(Global Variable(K), 3),
-            Visible To Position and Radius
-        );
-        Create In-World Text(
-            Value In Array(Value In Array(Global Variable(M), 21)), 4),
-            7,
-            Value In Array(Value In Array(Global Variable(M), 21)), 3),
-            1, Do Not Clip, Visible To Position and String
-        );
-
-        Create Effect(
-            Value In Array(Value In Array(Global Variable(M), 22)), 4),
-            Sphere, Blue,
-            Value In Array(Value In Array(Global Variable(M), 22)), 3),
-            Value In Array(Global Variable(K), 3),
-            Visible To Position and Radius
-        );
-        Create In-World Text(
-            Value In Array(Value In Array(Global Variable(M), 22)), 4),
-            7,
-            Value In Array(Value In Array(Global Variable(M), 22)), 3),
-            1, Do Not Clip, Visible To Position and String
-        );
-
-        Create Effect(
-            Value In Array(Value In Array(Global Variable(M), 23)), 4),
-            Sphere, Yellow,
-            Value In Array(Value In Array(Global Variable(M), 23)), 3),
-            Value In Array(Global Variable(K), 3),
-            Visible To Position and Radius
-        );
-        Create In-World Text(
-            Value In Array(Value In Array(Global Variable(M), 23)), 4),
-            7,
-            Value In Array(Value In Array(Global Variable(M), 23)), 3),
-            1, Do Not Clip, Visible To Position and String
-        );
-
-        Create Effect(
-            Value In Array(Value In Array(Global Variable(M), 24)), 4),
-            Sphere, Green,
-            Value In Array(Value In Array(Global Variable(M), 24)), 3),
-            Value In Array(Global Variable(K), 3),
-            Visible To Position and Radius
-        );
-        Create In-World Text(
-            Value In Array(Value In Array(Global Variable(M), 24)), 4),
-            7,
-            Value In Array(Value In Array(Global Variable(M), 24)), 3),
-            1, Do Not Clip, Visible To Position and String
-        );
-
-        Create Effect(
-            Value In Array(Value In Array(Global Variable(M), 25)), 4),
-            Sphere, Red,
-            Value In Array(Value In Array(Global Variable(M), 25)), 3),
-            Value In Array(Global Variable(K), 3),
-            Visible To Position and Radius
-        );
-        Create In-World Text(
-            Value In Array(Value In Array(Global Variable(M), 25)), 4),
-            8,
-            Value In Array(Value In Array(Global Variable(M), 25)), 3),
-            1, Do Not Clip, Visible To Position and String
-        );
-
-        Create Effect(
-            Value In Array(Value In Array(Global Variable(M), 26)), 4),
-            Sphere, Blue,
-            Value In Array(Value In Array(Global Variable(M), 26)), 3),
-            Value In Array(Global Variable(K), 3),
-            Visible To Position and Radius
-        );
-        Create In-World Text(
-            Value In Array(Value In Array(Global Variable(M), 26)), 4),
-            8,
-            Value In Array(Value In Array(Global Variable(M), 26)), 3),
-            1, Do Not Clip, Visible To Position and String
-        );
-
-        Create Effect(
-            Value In Array(Value In Array(Global Variable(M), 27)), 4),
-            Sphere, Yellow,
-            Value In Array(Value In Array(Global Variable(M), 27)), 3),
-            Value In Array(Global Variable(K), 3),
-            Visible To Position and Radius
-        );
-        Create In-World Text(
-            Value In Array(Value In Array(Global Variable(M), 27)), 4),
-            8,
-            Value In Array(Value In Array(Global Variable(M), 27)), 3),
-            1, Do Not Clip, Visible To Position and String
-        );
-
-        Create Effect(
-            Value In Array(Value In Array(Global Variable(M), 28)), 4),
-            Sphere, Green,
-            Value In Array(Value In Array(Global Variable(M), 28)), 3),
-            Value In Array(Global Variable(K), 3),
-            Visible To Position and Radius
-        );
-        Create In-World Text(
-            Value In Array(Value In Array(Global Variable(M), 28)), 4),
-            8,
-            Value In Array(Value In Array(Global Variable(M), 28)), 3),
-            1, Do Not Clip, Visible To Position and String
-        );
-
-        Create Effect(
-            Value In Array(Value In Array(Global Variable(M), 29)), 4),
-            Sphere, Red,
-            Value In Array(Value In Array(Global Variable(M), 29)), 3),
-            Value In Array(Global Variable(K), 3),
-            Visible To Position and Radius
-        );
-        Create In-World Text(
-            Value In Array(Value In Array(Global Variable(M), 29)), 4),
-            9,
-            Value In Array(Value In Array(Global Variable(M), 29)), 3),
-            1, Do Not Clip, Visible To Position and String
-        );
-
-        Create Effect(
-            Value In Array(Value In Array(Global Variable(M), 30)), 4),
-            Sphere, Blue,
-            Value In Array(Value In Array(Global Variable(M), 30)), 3),
-            Value In Array(Global Variable(K), 3),
-            Visible To Position and Radius
-        );
-        Create In-World Text(
-            Value In Array(Value In Array(Global Variable(M), 30)), 4),
-            9,
-            Value In Array(Value In Array(Global Variable(M), 30)), 3),
-            1, Do Not Clip, Visible To Position and String
-        );
-
-        Create Effect(
-            Value In Array(Value In Array(Global Variable(M), 31)), 4),
-            Sphere, Yellow,
-            Value In Array(Value In Array(Global Variable(M), 31)), 3),
-            Value In Array(Global Variable(K), 3),
-            Visible To Position and Radius
-        );
-        Create In-World Text(
-            Value In Array(Value In Array(Global Variable(M), 31)), 4),
-            9,
-            Value In Array(Value In Array(Global Variable(M), 31)), 3),
-            1, Do Not Clip, Visible To Position and String
-        );
-
-        Create Effect(
-            Value In Array(Value In Array(Global Variable(M), 32)), 4),
-            Sphere, Green,
-            Value In Array(Value In Array(Global Variable(M), 32)), 3),
-            Value In Array(Global Variable(K), 3),
-            Visible To Position and Radius
-        );
-        Create In-World Text(
-            Value In Array(Value In Array(Global Variable(M), 32)), 4),
-            9,
-            Value In Array(Value In Array(Global Variable(M), 32)), 3),
-            1, Do Not Clip, Visible To Position and String
-        );
-
-        Create Effect(
-            Value In Array(Value In Array(Global Variable(M), 33)), 4),
-            Sphere, Red,
-            Value In Array(Value In Array(Global Variable(M), 33)), 3),
-            Value In Array(Global Variable(K), 3),
-            Visible To Position and Radius
-        );
-        Create In-World Text(
-            Value In Array(Value In Array(Global Variable(M), 33)), 4),
-            10,
-            Value In Array(Value In Array(Global Variable(M), 33)), 3),
-            1, Do Not Clip, Visible To Position and String
-        );
-
-        Create Effect(
-            Value In Array(Value In Array(Global Variable(M), 34)), 4),
-            Sphere, Blue,
-            Value In Array(Value In Array(Global Variable(M), 34)), 3),
-            Value In Array(Global Variable(K), 3),
-            Visible To Position and Radius
-        );
-        Create In-World Text(
-            Value In Array(Value In Array(Global Variable(M), 34)), 4),
-            10,
-            Value In Array(Value In Array(Global Variable(M), 34)), 3),
-            1, Do Not Clip, Visible To Position and String
-        );
-
-        Create Effect(
-            Value In Array(Value In Array(Global Variable(M), 35)), 4),
-            Sphere, Yellow,
-            Value In Array(Value In Array(Global Variable(M), 35)), 3),
-            Value In Array(Global Variable(K), 3),
-            Visible To Position and Radius
-        );
-        Create In-World Text(
-            Value In Array(Value In Array(Global Variable(M), 35)), 4),
-            10,
-            Value In Array(Value In Array(Global Variable(M), 35)), 3),
-            1, Do Not Clip, Visible To Position and String
-        );
-
-        Create Effect(
-            Value In Array(Value In Array(Global Variable(M), 36)), 4),
-            Sphere, Green,
-            Value In Array(Value In Array(Global Variable(M), 36)), 3),
-            Value In Array(Global Variable(K), 3),
-            Visible To Position and Radius
-        );
-        Create In-World Text(
-            Value In Array(Value In Array(Global Variable(M), 36)), 4),
-            10,
-            Value In Array(Value In Array(Global Variable(M), 36)), 3),
-            1, Do Not Clip, Visible To Position and String
-        );
-
-        Create Effect(
-            Value In Array(Value In Array(Global Variable(M), 37)), 4),
-            Sphere, Red,
-            Value In Array(Value In Array(Global Variable(M), 37)), 3),
-            Value In Array(Global Variable(K), 3),
-            Visible To Position and Radius
-        );
-        Create In-World Text(
-            Value In Array(Value In Array(Global Variable(M), 37)), 4),
-            Hero Icon String(Hero(Junkrat)),
-            Value In Array(Value In Array(Global Variable(M), 37)), 3),
-            1, Do Not Clip, Visible To Position and String
-        );
-
-        Create Effect(
-            Value In Array(Value In Array(Global Variable(M), 38)), 4),
-            Sphere, Blue,
-            Value In Array(Value In Array(Global Variable(M), 38)), 3),
-            Value In Array(Global Variable(K), 3),
-            Visible To Position and Radius
-        );
-        Create In-World Text(
-            Value In Array(Value In Array(Global Variable(M), 38)), 4),
-            Hero Icon String(Hero(Junkrat)),
-            Value In Array(Value In Array(Global Variable(M), 38)), 3),
-            1, Do Not Clip, Visible To Position and String
-        );
-
-        Create Effect(
-            Value In Array(Value In Array(Global Variable(M), 39)), 4),
-            Sphere, Yellow,
-            Value In Array(Value In Array(Global Variable(M), 39)), 3),
-            Value In Array(Global Variable(K), 3),
-            Visible To Position and Radius
-        );
-        Create In-World Text(
-            Value In Array(Value In Array(Global Variable(M), 39)), 4),
-            Hero Icon String(Hero(Junkrat)),
-            Value In Array(Value In Array(Global Variable(M), 39)), 3),
-            1, Do Not Clip, Visible To Position and String
-        );
-
-        Create Effect(
-            Value In Array(Value In Array(Global Variable(M), 40)), 4),
-            Sphere, Green,
-            Value In Array(Value In Array(Global Variable(M), 40)), 3),
-            Value In Array(Global Variable(K), 3),
-            Visible To Position and Radius
-        );
-        Create In-World Text(
-            Value In Array(Value In Array(Global Variable(M), 40)), 4),
-            Hero Icon String(Hero(Junkrat)),
-            Value In Array(Value In Array(Global Variable(M), 40)), 3),
-            1, Do Not Clip, Visible To Position and String
-        );
-
-        Create Effect(
-            Value In Array(Value In Array(Global Variable(M), 41)), 4),
-            Sphere, Red,
-            Value In Array(Value In Array(Global Variable(M), 41)), 3),
-            Value In Array(Global Variable(K), 3),
-            Visible To Position and Radius
-        );
-        Create In-World Text(
-            Value In Array(Value In Array(Global Variable(M), 41)), 4),
-            Hero Icon String(Hero(Mercy)),
-            Value In Array(Value In Array(Global Variable(M), 41)), 3),
-            1, Do Not Clip, Visible To Position and String
-        );
-
-        Create Effect(
-            Value In Array(Value In Array(Global Variable(M), 42)), 4),
-            Sphere, Blue,
-            Value In Array(Value In Array(Global Variable(M), 42)), 3),
-            Value In Array(Global Variable(K), 3),
-            Visible To Position and Radius
-        );
-        Create In-World Text(
-            Value In Array(Value In Array(Global Variable(M), 42)), 4),
-            Hero Icon String(Hero(Mercy)),
-            Value In Array(Value In Array(Global Variable(M), 42)), 3),
-            1, Do Not Clip, Visible To Position and String
-        );
-
-        Create Effect(
-            Value In Array(Value In Array(Global Variable(M), 43)), 4),
-            Sphere, Yellow,
-            Value In Array(Value In Array(Global Variable(M), 43)), 3),
-            Value In Array(Global Variable(K), 3),
-            Visible To Position and Radius
-        );
-        Create In-World Text(
-            Value In Array(Value In Array(Global Variable(M), 43)), 4),
-            Hero Icon String(Hero(Mercy)),
-            Value In Array(Value In Array(Global Variable(M), 43)), 3),
-            1, Do Not Clip, Visible To Position and String
-        );
-
-        Create Effect(
-            Value In Array(Value In Array(Global Variable(M), 44)), 4),
-            Sphere, Green,
-            Value In Array(Value In Array(Global Variable(M), 44)), 3),
-            Value In Array(Global Variable(K), 3),
-            Visible To Position and Radius
-        );
-        Create In-World Text(
-            Value In Array(Value In Array(Global Variable(M), 44)), 4),
-            Hero Icon String(Hero(Mercy)),
-            Value In Array(Value In Array(Global Variable(M), 44)), 3),
-            1, Do Not Clip, Visible To Position and String
-        );
-
-        Create Effect(
-            Value In Array(Value In Array(Global Variable(M), 45)), 4),
-            Sphere, Red,
-            Value In Array(Value In Array(Global Variable(M), 45)), 3),
-            Value In Array(Global Variable(K), 3),
-            Visible To Position and Radius
-        );
-        Create In-World Text(
-            Value In Array(Value In Array(Global Variable(M), 45)), 4),
-            Hero Icon String(Hero(Reinhardt)),
-            Value In Array(Value In Array(Global Variable(M), 45)), 3),
-            1, Do Not Clip, Visible To Position and String
-        );
-
-        Create Effect(
-            Value In Array(Value In Array(Global Variable(M), 46)), 4),
-            Sphere, Blue,
-            Value In Array(Value In Array(Global Variable(M), 46)), 3),
-            Value In Array(Global Variable(K), 3),
-            Visible To Position and Radius
-        );
-        Create In-World Text(
-            Value In Array(Value In Array(Global Variable(M), 46)), 4),
-            Hero Icon String(Hero(Reinhardt)),
-            Value In Array(Value In Array(Global Variable(M), 46)), 3),
-            1, Do Not Clip, Visible To Position and String
-        );
-
-        Create Effect(
-            Value In Array(Value In Array(Global Variable(M), 47)), 4),
-            Sphere, Yellow,
-            Value In Array(Value In Array(Global Variable(M), 47)), 3),
-            Value In Array(Global Variable(K), 3),
-            Visible To Position and Radius
-        );
-        Create In-World Text(
-            Value In Array(Value In Array(Global Variable(M), 47)), 4),
-            Hero Icon String(Hero(Reinhardt)),
-            Value In Array(Value In Array(Global Variable(M), 47)), 3),
-            1, Do Not Clip, Visible To Position and String
-        );
-
-        Create Effect(
-            Value In Array(Value In Array(Global Variable(M), 48)), 4),
-            Sphere, Green,
-            Value In Array(Value In Array(Global Variable(M), 48)), 3),
-            Value In Array(Global Variable(K), 3),
-            Visible To Position and Radius
-        );
-        Create In-World Text(
-            Value In Array(Value In Array(Global Variable(M), 48)), 4),
-            Hero Icon String(Hero(Reinhardt)),
-            Value In Array(Value In Array(Global Variable(M), 48)), 3),
-            1, Do Not Clip, Visible To Position and String
-        );
-
-        Create Effect(
-            Value In Array(Value In Array(Global Variable(M), 49)), 4),
-            Sphere, Red,
-            Value In Array(Value In Array(Global Variable(M), 49)), 3),
-            Value In Array(Global Variable(K), 3),
-            Visible To Position and Radius
-        );
-        Create In-World Text(
-            Value In Array(Value In Array(Global Variable(M), 49)), 4),
-            Hero Icon String(Hero(Tracer)),
-            Value In Array(Value In Array(Global Variable(M), 49)), 3),
-            1, Do Not Clip, Visible To Position and String
-        );
-
-        Create Effect(
-            Value In Array(Value In Array(Global Variable(M), 50)), 4),
-            Sphere, Blue,
-            Value In Array(Value In Array(Global Variable(M), 50)), 3),
-            Value In Array(Global Variable(K), 3),
-            Visible To Position and Radius
-        );
-        Create In-World Text(
-            Value In Array(Value In Array(Global Variable(M), 50)), 4),
-            Hero Icon String(Hero(Tracer)),
-            Value In Array(Value In Array(Global Variable(M), 50)), 3),
-            1, Do Not Clip, Visible To Position and String
-        );
-
-        Create Effect(
-            Value In Array(Value In Array(Global Variable(M), 51)), 4),
-            Sphere, Yellow,
-            Value In Array(Value In Array(Global Variable(M), 51)), 3),
-            Value In Array(Global Variable(K), 3),
-            Visible To Position and Radius
-        );
-        Create In-World Text(
-            Value In Array(Value In Array(Global Variable(M), 51)), 4),
-            Hero Icon String(Hero(Tracer)),
-            Value In Array(Value In Array(Global Variable(M), 51)), 3),
-            1, Do Not Clip, Visible To Position and String
-        );
-
-        Create Effect(
-            Value In Array(Value In Array(Global Variable(M), 52)), 4),
-            Sphere, Green,
-            Value In Array(Value In Array(Global Variable(M), 52)), 3),
-            Value In Array(Global Variable(K), 3),
-            Visible To Position and Radius
-        );
-        Create In-World Text(
-            Value In Array(Value In Array(Global Variable(M), 52)), 4),
-            Hero Icon String(Hero(Tracer)),
-            Value In Array(Value In Array(Global Variable(M), 52)), 3),
-            1, Do Not Clip, Visible To Position and String
-        );
     }
 }
 
@@ -918,16 +135,16 @@ rule("Display global UI")
 	    Create Effect(All Players(All Teams), Ring, White, Position Of(First Of(Filtered Array(All Players(All Teams), Player Variable(Current Array Element, C)))), 5, Visible To Position and Radius);
         
         // Pot
-	    Create Effect(All Players(All Teams), Orb, Yellow, Value In Array(Value In Array(Global Variable(K), 0), 1), Value In Array(Value In Array(Global Variable(K), 0), 2), Visible To);
+	    Create Effect(All Players(All Teams), Cloud, Yellow, Value In Array(Value In Array(Global Variable(K), 0), 1), Value In Array(Value In Array(Global Variable(K), 0), 2), Visible To Position and Radius);
         Create In-World Text(All Players(All Teams), Global Variable(C), Value In Array(Value In Array(Global Variable(K), 0), 1), 2,
 		Do Not Clip, Visible To and String);
         
         // Buttons - fold, bet, call, raise, check
-        Create Effect(All Players(All Teams), Sphere, White, Value In Array(Value In Array(Global Variable(P), 0), 1), Value In Array(Value In Array(Global Variable(P), 0), 2), Visible To);
-        Create Effect(All Players(All Teams), Sphere, Green, Value In Array(Value In Array(Global Variable(P), 1), 1), Value In Array(Value In Array(Global Variable(P), 1), 2), Visible To);
-        Create Effect(All Players(All Teams), Sphere, Blue, Value In Array(Value In Array(Global Variable(P), 2), 1), Value In Array(Value In Array(Global Variable(P), 2), 2), Visible To);
-        Create Effect(All Players(All Teams), Sphere, Red, Value In Array(Value In Array(Global Variable(P), 3), 1), Value In Array(Value In Array(Global Variable(P), 3), 2), Visible To);
-        Create Effect(All Players(All Teams), Sphere, Purple, Value In Array(Value In Array(Global Variable(P), 4), 1), Value In Array(Value In Array(Global Variable(P), 4), 2), Visible To);
+        Create Effect(All Players(All Teams), Sphere, White, Value In Array(Value In Array(Global Variable(P), 0), 1), Value In Array(Value In Array(Global Variable(P), 0), 2), Visible To Position and Radius);
+        Create Effect(All Players(All Teams), Sphere, Green, Value In Array(Value In Array(Global Variable(P), 1), 1), Value In Array(Value In Array(Global Variable(P), 1), 2), Visible To Position and Radius);
+        Create Effect(All Players(All Teams), Sphere, Blue, Value In Array(Value In Array(Global Variable(P), 2), 1), Value In Array(Value In Array(Global Variable(P), 2), 2), Visible To Position and Radius);
+        Create Effect(All Players(All Teams), Sphere, Red, Value In Array(Value In Array(Global Variable(P), 3), 1), Value In Array(Value In Array(Global Variable(P), 3), 2), Visible To Position and Radius);
+        Create Effect(All Players(All Teams), Sphere, Purple, Value In Array(Value In Array(Global Variable(P), 4), 1), Value In Array(Value In Array(Global Variable(P), 4), 2), Visible To Position and Radius);
         
         Create In-World Text(All Players(All Teams), String("Exit", Null, Null, Null), Value In Array(Value In Array(Global Variable(P), 0), 1), 1, Do Not Clip, Visible To and String);
         Create In-World Text(All Players(All Teams), String("Better", Null, Null, Null), Value In Array(Value In Array(Global Variable(P), 1), 1), 1, Do Not Clip, Visible To and String);
@@ -961,6 +178,787 @@ rule("Display player UI and settings")
         // Proposed bet
         Create HUD Text(All Players(All Teams), Player Variable(Event Player, G), Null, Null, Left, 0, White, White, White, Visible To and String);
 	}
+}
+
+rule("Deck generation / init")
+{
+    event
+	{
+		Ongoing - Global;
+	}
+
+    conditions
+    {
+        Compare(Global Variable(Q), ==, Empty Array) == True;
+    }
+
+    actions
+    {
+        Wait(0.016, Ignore Condition);
+
+        Skip If(Compare(Global Variable(Q), !=, Empty Array), 2);
+        Modify Global Variable(Q, Append To Array, 2);
+        Modify Global Variable(Q, Append To Array, 0);
+        
+        // Loop from gQ[0] = 2-14
+            // Loop from gQ[1] = 0-3
+                // Append to gM gQ[0], gQ[1], gK[0][1], Null
+                Modify Global Variable(M, Append To Array, Value In Array(Global Variable(Q), 0));
+                Modify Global Variable(M, Append To Array, Value In Array(Global Variable(Q), 1));
+                Modify Global Variable(M, Append To Array, Value In Array(Value In Array(Global Variable(K), 0), 1));
+                Modify Global Variable(M, Append To Array, Null);
+            Modify Global Variable At Index(Q, 1, Add, 1);
+            Loop If(Compare(Value In Array(Global Variable(Q), 1), <=, 3));
+            Set Global Variable At Index(Q, 1, 0);
+        Modify Global Variable At Index(Q, 0, Add, 1);
+	    Loop If(Compare(Value In Array(Global Variable(Q), 0), <=, 14));
+
+        Set Global Variable(Q, 999);
+    }
+}
+
+rule("Deck generation / create and link objects to their corresponding elements")
+{
+    event
+	{
+		Ongoing - Global;
+	}
+
+    conditions
+    {
+        Compare(Global Variable(Q), ==, 999) == True;
+    }
+
+    actions
+    {
+        Create Effect(
+            Value In Array(Global Variable(M), 3),
+            Sphere, Red,
+            Value In Array(Global Variable(M), 2),
+            Value In Array(Global Variable(K), 2),
+            Visible To Position and Radius
+        );
+        Create In-World Text(
+            Value In Array(Global Variable(M), 3),
+            2,
+            Value In Array(Global Variable(M), 2),
+            1, Do Not Clip, Visible To Position and String
+        );
+
+        Create Effect(
+            Value In Array(Global Variable(M), 7),
+            Sphere, Blue,
+            Value In Array(Global Variable(M), 6),
+            Value In Array(Global Variable(K), 2),
+            Visible To Position and Radius
+        );
+        Create In-World Text(
+            Value In Array(Global Variable(M), 7),
+            2,
+            Value In Array(Global Variable(M), 6),
+            1, Do Not Clip, Visible To Position and String
+        );
+
+        Create Effect(
+            Value In Array(Global Variable(M), 11),
+            Sphere, Yellow,
+            Value In Array(Global Variable(M), 10),
+            Value In Array(Global Variable(K), 2),
+            Visible To Position and Radius
+        );
+        Create In-World Text(
+            Value In Array(Global Variable(M), 11),
+            2,
+            Value In Array(Global Variable(M), 10),
+            1, Do Not Clip, Visible To Position and String
+        );
+
+        Create Effect(
+            Value In Array(Global Variable(M), 15),
+            Sphere, Green,
+            Value In Array(Global Variable(M), 14),
+            Value In Array(Global Variable(K), 2),
+            Visible To Position and Radius
+        );
+        Create In-World Text(
+            Value In Array(Global Variable(M), 15),
+            2,
+            Value In Array(Global Variable(M), 14),
+            1, Do Not Clip, Visible To Position and String
+        );
+
+        Create Effect(
+            Value In Array(Global Variable(M), 19),
+            Sphere, Red,
+            Value In Array(Global Variable(M), 18),
+            Value In Array(Global Variable(K), 2),
+            Visible To Position and Radius
+        );
+        Create In-World Text(
+            Value In Array(Global Variable(M), 19),
+            3,
+            Value In Array(Global Variable(M), 18),
+            1, Do Not Clip, Visible To Position and String
+        );
+
+        Create Effect(
+            Value In Array(Global Variable(M), 23),
+            Sphere, Blue,
+            Value In Array(Global Variable(M), 22),
+            Value In Array(Global Variable(K), 2),
+            Visible To Position and Radius
+        );
+        Create In-World Text(
+            Value In Array(Global Variable(M), 23),
+            3,
+            Value In Array(Global Variable(M), 22),
+            1, Do Not Clip, Visible To Position and String
+        );
+
+        Create Effect(
+            Value In Array(Global Variable(M), 27),
+            Sphere, Yellow,
+            Value In Array(Global Variable(M), 26),
+            Value In Array(Global Variable(K), 2),
+            Visible To Position and Radius
+        );
+        Create In-World Text(
+            Value In Array(Global Variable(M), 27),
+            3,
+            Value In Array(Global Variable(M), 26),
+            1, Do Not Clip, Visible To Position and String
+        );
+
+        Create Effect(
+            Value In Array(Global Variable(M), 31),
+            Sphere, Green,
+            Value In Array(Global Variable(M), 30),
+            Value In Array(Global Variable(K), 2),
+            Visible To Position and Radius
+        );
+        Create In-World Text(
+            Value In Array(Global Variable(M), 31),
+            3,
+            Value In Array(Global Variable(M), 30),
+            1, Do Not Clip, Visible To Position and String
+        );
+
+        Create Effect(
+            Value In Array(Global Variable(M), 35),
+            Sphere, Red,
+            Value In Array(Global Variable(M), 34),
+            Value In Array(Global Variable(K), 2),
+            Visible To Position and Radius
+        );
+        Create In-World Text(
+            Value In Array(Global Variable(M), 35),
+            4,
+            Value In Array(Global Variable(M), 34),
+            1, Do Not Clip, Visible To Position and String
+        );
+
+        Create Effect(
+            Value In Array(Global Variable(M), 39),
+            Sphere, Blue,
+            Value In Array(Global Variable(M), 38),
+            Value In Array(Global Variable(K), 2),
+            Visible To Position and Radius
+        );
+        Create In-World Text(
+            Value In Array(Global Variable(M), 39),
+            4,
+            Value In Array(Global Variable(M), 38),
+            1, Do Not Clip, Visible To Position and String
+        );
+
+        Create Effect(
+            Value In Array(Global Variable(M), 43),
+            Sphere, Yellow,
+            Value In Array(Global Variable(M), 42),
+            Value In Array(Global Variable(K), 2),
+            Visible To Position and Radius
+        );
+        Create In-World Text(
+            Value In Array(Global Variable(M), 43),
+            4,
+            Value In Array(Global Variable(M), 42),
+            1, Do Not Clip, Visible To Position and String
+        );
+
+        Create Effect(
+            Value In Array(Global Variable(M), 47),
+            Sphere, Green,
+            Value In Array(Global Variable(M), 46),
+            Value In Array(Global Variable(K), 2),
+            Visible To Position and Radius
+        );
+        Create In-World Text(
+            Value In Array(Global Variable(M), 47),
+            4,
+            Value In Array(Global Variable(M), 46),
+            1, Do Not Clip, Visible To Position and String
+        );
+
+        Create Effect(
+            Value In Array(Global Variable(M), 51),
+            Sphere, Red,
+            Value In Array(Global Variable(M), 50),
+            Value In Array(Global Variable(K), 2),
+            Visible To Position and Radius
+        );
+        Create In-World Text(
+            Value In Array(Global Variable(M), 51),
+            5,
+            Value In Array(Global Variable(M), 50),
+            1, Do Not Clip, Visible To Position and String
+        );
+
+        Create Effect(
+            Value In Array(Global Variable(M), 55),
+            Sphere, Blue,
+            Value In Array(Global Variable(M), 54),
+            Value In Array(Global Variable(K), 2),
+            Visible To Position and Radius
+        );
+        Create In-World Text(
+            Value In Array(Global Variable(M), 55),
+            5,
+            Value In Array(Global Variable(M), 54),
+            1, Do Not Clip, Visible To Position and String
+        );
+
+        Create Effect(
+            Value In Array(Global Variable(M), 59),
+            Sphere, Yellow,
+            Value In Array(Global Variable(M), 58),
+            Value In Array(Global Variable(K), 2),
+            Visible To Position and Radius
+        );
+        Create In-World Text(
+            Value In Array(Global Variable(M), 59),
+            5,
+            Value In Array(Global Variable(M), 58),
+            1, Do Not Clip, Visible To Position and String
+        );
+
+        Create Effect(
+            Value In Array(Global Variable(M), 63),
+            Sphere, Green,
+            Value In Array(Global Variable(M), 62),
+            Value In Array(Global Variable(K), 2),
+            Visible To Position and Radius
+        );
+        Create In-World Text(
+            Value In Array(Global Variable(M), 63),
+            5,
+            Value In Array(Global Variable(M), 62),
+            1, Do Not Clip, Visible To Position and String
+        );
+
+        Create Effect(
+            Value In Array(Global Variable(M), 67),
+            Sphere, Red,
+            Value In Array(Global Variable(M), 66),
+            Value In Array(Global Variable(K), 2),
+            Visible To Position and Radius
+        );
+        Create In-World Text(
+            Value In Array(Global Variable(M), 67),
+            6,
+            Value In Array(Global Variable(M), 66),
+            1, Do Not Clip, Visible To Position and String
+        );
+
+        Create Effect(
+            Value In Array(Global Variable(M), 71),
+            Sphere, Blue,
+            Value In Array(Global Variable(M), 70),
+            Value In Array(Global Variable(K), 2),
+            Visible To Position and Radius
+        );
+        Create In-World Text(
+            Value In Array(Global Variable(M), 71),
+            6,
+            Value In Array(Global Variable(M), 70),
+            1, Do Not Clip, Visible To Position and String
+        );
+
+        Create Effect(
+            Value In Array(Global Variable(M), 75),
+            Sphere, Yellow,
+            Value In Array(Global Variable(M), 74),
+            Value In Array(Global Variable(K), 2),
+            Visible To Position and Radius
+        );
+        Create In-World Text(
+            Value In Array(Global Variable(M), 75),
+            6,
+            Value In Array(Global Variable(M), 74),
+            1, Do Not Clip, Visible To Position and String
+        );
+
+        Create Effect(
+            Value In Array(Global Variable(M), 79),
+            Sphere, Green,
+            Value In Array(Global Variable(M), 78),
+            Value In Array(Global Variable(K), 2),
+            Visible To Position and Radius
+        );
+        Create In-World Text(
+            Value In Array(Global Variable(M), 79),
+            6,
+            Value In Array(Global Variable(M), 78),
+            1, Do Not Clip, Visible To Position and String
+        );
+
+        Create Effect(
+            Value In Array(Global Variable(M), 83),
+            Sphere, Red,
+            Value In Array(Global Variable(M), 82),
+            Value In Array(Global Variable(K), 2),
+            Visible To Position and Radius
+        );
+        Create In-World Text(
+            Value In Array(Global Variable(M), 83),
+            7,
+            Value In Array(Global Variable(M), 82),
+            1, Do Not Clip, Visible To Position and String
+        );
+
+        Create Effect(
+            Value In Array(Global Variable(M), 87),
+            Sphere, Blue,
+            Value In Array(Global Variable(M), 86),
+            Value In Array(Global Variable(K), 2),
+            Visible To Position and Radius
+        );
+        Create In-World Text(
+            Value In Array(Global Variable(M), 87),
+            7,
+            Value In Array(Global Variable(M), 86),
+            1, Do Not Clip, Visible To Position and String
+        );
+
+        Create Effect(
+            Value In Array(Global Variable(M), 91),
+            Sphere, Yellow,
+            Value In Array(Global Variable(M), 90),
+            Value In Array(Global Variable(K), 2),
+            Visible To Position and Radius
+        );
+        Create In-World Text(
+            Value In Array(Global Variable(M), 91),
+            7,
+            Value In Array(Global Variable(M), 90),
+            1, Do Not Clip, Visible To Position and String
+        );
+
+        Create Effect(
+            Value In Array(Global Variable(M), 95),
+            Sphere, Green,
+            Value In Array(Global Variable(M), 94),
+            Value In Array(Global Variable(K), 2),
+            Visible To Position and Radius
+        );
+        Create In-World Text(
+            Value In Array(Global Variable(M), 95),
+            7,
+            Value In Array(Global Variable(M), 94),
+            1, Do Not Clip, Visible To Position and String
+        );
+
+        Create Effect(
+            Value In Array(Global Variable(M), 99),
+            Sphere, Red,
+            Value In Array(Global Variable(M), 98),
+            Value In Array(Global Variable(K), 2),
+            Visible To Position and Radius
+        );
+        Create In-World Text(
+            Value In Array(Global Variable(M), 99),
+            8,
+            Value In Array(Global Variable(M), 98),
+            1, Do Not Clip, Visible To Position and String
+        );
+
+        Create Effect(
+            Value In Array(Global Variable(M), 103),
+            Sphere, Blue,
+            Value In Array(Global Variable(M), 102),
+            Value In Array(Global Variable(K), 2),
+            Visible To Position and Radius
+        );
+        Create In-World Text(
+            Value In Array(Global Variable(M), 103),
+            8,
+            Value In Array(Global Variable(M), 102),
+            1, Do Not Clip, Visible To Position and String
+        );
+
+        Create Effect(
+            Value In Array(Global Variable(M), 107),
+            Sphere, Yellow,
+            Value In Array(Global Variable(M), 106),
+            Value In Array(Global Variable(K), 2),
+            Visible To Position and Radius
+        );
+        Create In-World Text(
+            Value In Array(Global Variable(M), 107),
+            8,
+            Value In Array(Global Variable(M), 106),
+            1, Do Not Clip, Visible To Position and String
+        );
+
+        Create Effect(
+            Value In Array(Global Variable(M), 111),
+            Sphere, Green,
+            Value In Array(Global Variable(M), 110),
+            Value In Array(Global Variable(K), 2),
+            Visible To Position and Radius
+        );
+        Create In-World Text(
+            Value In Array(Global Variable(M), 111),
+            8,
+            Value In Array(Global Variable(M), 110),
+            1, Do Not Clip, Visible To Position and String
+        );
+
+        Create Effect(
+            Value In Array(Global Variable(M), 115),
+            Sphere, Red,
+            Value In Array(Global Variable(M), 114),
+            Value In Array(Global Variable(K), 2),
+            Visible To Position and Radius
+        );
+        Create In-World Text(
+            Value In Array(Global Variable(M), 115),
+            9,
+            Value In Array(Global Variable(M), 114),
+            1, Do Not Clip, Visible To Position and String
+        );
+
+        Create Effect(
+            Value In Array(Global Variable(M), 119),
+            Sphere, Blue,
+            Value In Array(Global Variable(M), 118),
+            Value In Array(Global Variable(K), 2),
+            Visible To Position and Radius
+        );
+        Create In-World Text(
+            Value In Array(Global Variable(M), 119),
+            9,
+            Value In Array(Global Variable(M), 118),
+            1, Do Not Clip, Visible To Position and String
+        );
+
+        Create Effect(
+            Value In Array(Global Variable(M), 123),
+            Sphere, Yellow,
+            Value In Array(Global Variable(M), 122),
+            Value In Array(Global Variable(K), 2),
+            Visible To Position and Radius
+        );
+        Create In-World Text(
+            Value In Array(Global Variable(M), 123),
+            9,
+            Value In Array(Global Variable(M), 122),
+            1, Do Not Clip, Visible To Position and String
+        );
+
+        Create Effect(
+            Value In Array(Global Variable(M), 127),
+            Sphere, Green,
+            Value In Array(Global Variable(M), 126),
+            Value In Array(Global Variable(K), 2),
+            Visible To Position and Radius
+        );
+        Create In-World Text(
+            Value In Array(Global Variable(M), 127),
+            9,
+            Value In Array(Global Variable(M), 126),
+            1, Do Not Clip, Visible To Position and String
+        );
+
+        Create Effect(
+            Value In Array(Global Variable(M), 131),
+            Sphere, Red,
+            Value In Array(Global Variable(M), 130),
+            Value In Array(Global Variable(K), 2),
+            Visible To Position and Radius
+        );
+        Create In-World Text(
+            Value In Array(Global Variable(M), 131),
+            10,
+            Value In Array(Global Variable(M), 130),
+            1, Do Not Clip, Visible To Position and String
+        );
+
+        Create Effect(
+            Value In Array(Global Variable(M), 135),
+            Sphere, Blue,
+            Value In Array(Global Variable(M), 134),
+            Value In Array(Global Variable(K), 2),
+            Visible To Position and Radius
+        );
+        Create In-World Text(
+            Value In Array(Global Variable(M), 135),
+            10,
+            Value In Array(Global Variable(M), 134),
+            1, Do Not Clip, Visible To Position and String
+        );
+
+        Create Effect(
+            Value In Array(Global Variable(M), 139),
+            Sphere, Yellow,
+            Value In Array(Global Variable(M), 138),
+            Value In Array(Global Variable(K), 2),
+            Visible To Position and Radius
+        );
+        Create In-World Text(
+            Value In Array(Global Variable(M), 139),
+            10,
+            Value In Array(Global Variable(M), 138),
+            1, Do Not Clip, Visible To Position and String
+        );
+
+        Create Effect(
+            Value In Array(Global Variable(M), 143),
+            Sphere, Green,
+            Value In Array(Global Variable(M), 142),
+            Value In Array(Global Variable(K), 2),
+            Visible To Position and Radius
+        );
+        Create In-World Text(
+            Value In Array(Global Variable(M), 143),
+            10,
+            Value In Array(Global Variable(M), 142),
+            1, Do Not Clip, Visible To Position and String
+        );
+
+        Create Effect(
+            Value In Array(Global Variable(M), 147),
+            Sphere, Red,
+            Value In Array(Global Variable(M), 146),
+            Value In Array(Global Variable(K), 2),
+            Visible To Position and Radius
+        );
+        Create In-World Text(
+            Value In Array(Global Variable(M), 147),
+            Hero Icon String(Hero(Junkrat)),
+            Value In Array(Global Variable(M), 146),
+            1, Do Not Clip, Visible To Position and String
+        );
+
+        Create Effect(
+            Value In Array(Global Variable(M), 151),
+            Sphere, Blue,
+            Value In Array(Global Variable(M), 150),
+            Value In Array(Global Variable(K), 2),
+            Visible To Position and Radius
+        );
+        Create In-World Text(
+            Value In Array(Global Variable(M), 151),
+            Hero Icon String(Hero(Junkrat)),
+            Value In Array(Global Variable(M), 150),
+            1, Do Not Clip, Visible To Position and String
+        );
+
+        Create Effect(
+            Value In Array(Global Variable(M), 155),
+            Sphere, Yellow,
+            Value In Array(Global Variable(M), 154),
+            Value In Array(Global Variable(K), 2),
+            Visible To Position and Radius
+        );
+        Create In-World Text(
+            Value In Array(Global Variable(M), 155),
+            Hero Icon String(Hero(Junkrat)),
+            Value In Array(Global Variable(M), 154),
+            1, Do Not Clip, Visible To Position and String
+        );
+
+        Create Effect(
+            Value In Array(Global Variable(M), 159),
+            Sphere, Green,
+            Value In Array(Global Variable(M), 158),
+            Value In Array(Global Variable(K), 2),
+            Visible To Position and Radius
+        );
+        Create In-World Text(
+            Value In Array(Global Variable(M), 159),
+            Hero Icon String(Hero(Junkrat)),
+            Value In Array(Global Variable(M), 158),
+            1, Do Not Clip, Visible To Position and String
+        );
+
+        Create Effect(
+            Value In Array(Global Variable(M), 163),
+            Sphere, Red,
+            Value In Array(Global Variable(M), 162),
+            Value In Array(Global Variable(K), 2),
+            Visible To Position and Radius
+        );
+        Create In-World Text(
+            Value In Array(Global Variable(M), 163),
+            Hero Icon String(Hero(Mercy)),
+            Value In Array(Global Variable(M), 162),
+            1, Do Not Clip, Visible To Position and String
+        );
+
+        Create Effect(
+            Value In Array(Global Variable(M), 167),
+            Sphere, Blue,
+            Value In Array(Global Variable(M), 166),
+            Value In Array(Global Variable(K), 2),
+            Visible To Position and Radius
+        );
+        Create In-World Text(
+            Value In Array(Global Variable(M), 167),
+            Hero Icon String(Hero(Mercy)),
+            Value In Array(Global Variable(M), 166),
+            1, Do Not Clip, Visible To Position and String
+        );
+
+        Create Effect(
+            Value In Array(Global Variable(M), 171),
+            Sphere, Yellow,
+            Value In Array(Global Variable(M), 170),
+            Value In Array(Global Variable(K), 2),
+            Visible To Position and Radius
+        );
+        Create In-World Text(
+            Value In Array(Global Variable(M), 171),
+            Hero Icon String(Hero(Mercy)),
+            Value In Array(Global Variable(M), 170),
+            1, Do Not Clip, Visible To Position and String
+        );
+
+        Create Effect(
+            Value In Array(Global Variable(M), 175),
+            Sphere, Green,
+            Value In Array(Global Variable(M), 174),
+            Value In Array(Global Variable(K), 2),
+            Visible To Position and Radius
+        );
+        Create In-World Text(
+            Value In Array(Global Variable(M), 175),
+            Hero Icon String(Hero(Mercy)),
+            Value In Array(Global Variable(M), 174),
+            1, Do Not Clip, Visible To Position and String
+        );
+
+        Create Effect(
+            Value In Array(Global Variable(M), 179),
+            Sphere, Red,
+            Value In Array(Global Variable(M), 178),
+            Value In Array(Global Variable(K), 2),
+            Visible To Position and Radius
+        );
+        Create In-World Text(
+            Value In Array(Global Variable(M), 179),
+            Hero Icon String(Hero(Reinhardt)),
+            Value In Array(Global Variable(M), 178),
+            1, Do Not Clip, Visible To Position and String
+        );
+
+        Create Effect(
+            Value In Array(Global Variable(M), 183),
+            Sphere, Blue,
+            Value In Array(Global Variable(M), 182),
+            Value In Array(Global Variable(K), 2),
+            Visible To Position and Radius
+        );
+        Create In-World Text(
+            Value In Array(Global Variable(M), 183),
+            Hero Icon String(Hero(Reinhardt)),
+            Value In Array(Global Variable(M), 182),
+            1, Do Not Clip, Visible To Position and String
+        );
+
+        Create Effect(
+            Value In Array(Global Variable(M), 187),
+            Sphere, Yellow,
+            Value In Array(Global Variable(M), 186),
+            Value In Array(Global Variable(K), 2),
+            Visible To Position and Radius
+        );
+        Create In-World Text(
+            Value In Array(Global Variable(M), 187),
+            Hero Icon String(Hero(Reinhardt)),
+            Value In Array(Global Variable(M), 186),
+            1, Do Not Clip, Visible To Position and String
+        );
+
+        Create Effect(
+            Value In Array(Global Variable(M), 191),
+            Sphere, Green,
+            Value In Array(Global Variable(M), 190),
+            Value In Array(Global Variable(K), 2),
+            Visible To Position and Radius
+        );
+        Create In-World Text(
+            Value In Array(Global Variable(M), 191),
+            Hero Icon String(Hero(Reinhardt)),
+            Value In Array(Global Variable(M), 190),
+            1, Do Not Clip, Visible To Position and String
+        );
+
+        Create Effect(
+            Value In Array(Global Variable(M), 195),
+            Sphere, Red,
+            Value In Array(Global Variable(M), 194),
+            Value In Array(Global Variable(K), 2),
+            Visible To Position and Radius
+        );
+        Create In-World Text(
+            Value In Array(Global Variable(M), 195),
+            Hero Icon String(Hero(Tracer)),
+            Value In Array(Global Variable(M), 194),
+            1, Do Not Clip, Visible To Position and String
+        );
+
+        Create Effect(
+            Value In Array(Global Variable(M), 199),
+            Sphere, Blue,
+            Value In Array(Global Variable(M), 198),
+            Value In Array(Global Variable(K), 2),
+            Visible To Position and Radius
+        );
+        Create In-World Text(
+            Value In Array(Global Variable(M), 199),
+            Hero Icon String(Hero(Tracer)),
+            Value In Array(Global Variable(M), 198),
+            1, Do Not Clip, Visible To Position and String
+        );
+
+        Create Effect(
+            Value In Array(Global Variable(M), 203),
+            Sphere, Yellow,
+            Value In Array(Global Variable(M), 202),
+            Value In Array(Global Variable(K), 2),
+            Visible To Position and Radius
+        );
+        Create In-World Text(
+            Value In Array(Global Variable(M), 203),
+            Hero Icon String(Hero(Tracer)),
+            Value In Array(Global Variable(M), 202),
+            1, Do Not Clip, Visible To Position and String
+        );
+
+        Create Effect(
+            Value In Array(Global Variable(M), 207),
+            Sphere, Green,
+            Value In Array(Global Variable(M), 206),
+            Value In Array(Global Variable(K), 2),
+            Visible To Position and Radius
+        );
+        Create In-World Text(
+            Value In Array(Global Variable(M), 207),
+            Hero Icon String(Hero(Tracer)),
+            Value In Array(Global Variable(M), 206),
+            1, Do Not Clip, Visible To Position and String
+        );
+    }
 }
 
 //card dealing__________________________________________________________________

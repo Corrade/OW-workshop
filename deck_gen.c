@@ -11,8 +11,6 @@ int main(void) {
     return EXIT_SUCCESS;
 }
 
-// Create effect at gM[?][3], visible to gM[?][4], radius = gK[3], varying colour based on gM[?][2]
-// Create in-world text at gM[?][3], visible to gM[?][4], varying value based on gM[?][1]
 // gM is sorted in this manner
 void output(FILE *out) {
     for (int value = 2; value <= 14; value++) {
@@ -46,25 +44,25 @@ void output(FILE *out) {
                 strcpy(text_value, "Hero Icon String(Hero(Tracer))");
             }
             
-            int i = 4*(value - 2) + suit + 1;
+            int index_in_gM = 4*(4*(value - 2) + suit);
             
             fprintf(
                 out,
                 "Create Effect(\n"
-                "    Value In Array(Value In Array(Global Variable(M), %d)), 4),\n"
+                "    Value In Array(Global Variable(M), %d),\n"
                 "    Sphere, %s,\n"
-                "    Value In Array(Value In Array(Global Variable(M), %d)), 3),\n"
-                "    Value In Array(Global Variable(K), 3),\n"
+                "    Value In Array(Global Variable(M), %d),\n"
+                "    Value In Array(Global Variable(K), 2),\n"
                 "    Visible To Position and Radius\n"
                 ");\n"
                 "Create In-World Text(\n"
-                "    Value In Array(Value In Array(Global Variable(M), %d)), 4),\n"
+                "    Value In Array(Global Variable(M), %d),\n"
                 "    %s,\n"
-                "    Value In Array(Value In Array(Global Variable(M), %d)), 3),\n"
+                "    Value In Array(Global Variable(M), %d),\n"
                 "    1, Do Not Clip, Visible To Position and String\n"
                 ");\n\n",
-                i, effect_col, i,
-                i, text_value, i
+                index_in_gM + 3, effect_col, index_in_gM + 2,
+                index_in_gM + 3, text_value, index_in_gM + 2
             );
         }
     }
