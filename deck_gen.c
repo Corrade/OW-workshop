@@ -44,25 +44,25 @@ void output(FILE *out) {
                 strcpy(text_value, "Hero Icon String(Hero(Tracer))");
             }
             
-            int index_in_gM = 4*(4*(value - 2) + suit);
+            int index_in_gM = 4*(value - 2) + suit;
             
             fprintf(
                 out,
                 "Create Effect(\n"
-                "    Value In Array(Global Variable(M), %d),\n"
+                "    Value In Array(Value In Array(Global Variable(M), %d), 3),\n"
                 "    Sphere, %s,\n"
-                "    Value In Array(Global Variable(M), %d),\n"
+                "    Value In Array(Value In Array(Global Variable(M), %d), 2),\n"
                 "    Value In Array(Global Variable(K), 2),\n"
                 "    Visible To Position and Radius\n"
                 ");\n"
                 "Create In-World Text(\n"
-                "    Value In Array(Global Variable(M), %d),\n"
+                "    Value In Array(Value In Array(Global Variable(M), %d), 3),\n"
                 "    %s,\n"
-                "    Value In Array(Global Variable(M), %d),\n"
+                "    Value In Array(Value In Array(Global Variable(M), %d), 2),\n"
                 "    1, Do Not Clip, Visible To Position and String\n"
                 ");\n\n",
-                index_in_gM + 3, effect_col, index_in_gM + 2,
-                index_in_gM + 3, text_value, index_in_gM + 2
+                index_in_gM, effect_col, index_in_gM,
+                index_in_gM, text_value, index_in_gM
             );
         }
     }
