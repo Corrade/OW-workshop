@@ -1,35 +1,34 @@
-gA = starting cash
-gB = small blind (big blind *2)
-gC = pot
-gD = array of community cards
-gE = stage: resting value 0, preflop 1, flop 2, turn 3, river 4
-gF = player order for button rotation. gF[0] = button, gF[1] = small blind, gF[2] = big blind.
-gG = player order for betting in the ongoing round.
-gH = index of current player in gG
-gI = temporary variable for updating gG in disconnect cases
-gJ = current stage leading bet
-gK = physical game object info {pot{center, radius}, community card positions[5], card sphere radius, chips/score units above eye level, current bet distance from feet}
-gL = modify bet increment
-// Hence each card has four adjacent values in gM. This unintuitive representation is necessary because  it's impossible to change one specific element in a 2D array.
-gM = deck{value from 2-14, suit from 0-3, center, visible to, ...}
-gN = deal card interface
-    gN[0] = trigger
-    gN[1] = visible to
-    gN[2] = position
-    gN[3] = random value in gM
-    gN[4] = temporary memory for module
-gO = nth community card
-gP = buttons{buttons{center, radius, ID}}
-gQ = iterator vars and trigger for initialising gM
+// All nested arrays unavoidably(?) have Null at index 0 and therefore essentially begin at index 1.
+// Card values are from 2-14 and suits are from 0-3.
 
-pA = array, hand
-pB = player current stage bet
-pC = player turn or not
-pD = trigger for turn actions. resting value 0, fold bet call raise check = {1, 2, 3, 4, 5} respectively.
-pE = trigger for end turn module
-pF = acted this stage
-pG = proposed bet
-pZ = player score for testing purposes
+// gA = starting cash
+// gB = small blind
+// gC = pot
+// gD = array of community cards {cards{value, suit}}
+// gE = stage: resting value 0, preflop 1, flop 2, turn 3, river 4
+// gF = player order for button rotation {button, small blind, big blind}
+// gG = player order for betting in the ongoing round
+// gH = index of current player in gG
+// gI = temporary variable for updating gG in disconnect cases
+// gJ = current stage leading bet
+// gK = physical game object info {pot{center, radius}, community card positions[5], card sphere radius, chips/score units above eye level, current bet distance from feet, deal card speed}
+// gL = modify bet increment
+// gM = deck{value, suit, center, visible to, ...}. Hence each card has four adjacent values in gM. This unintuitive representation is necessary because it's impossible to change one specific element in a 2D array. A card's 0th index in gM = 4*(4*(value - 2) + suit).
+// gN = interface for deal card{trigger, visible to, position, random card index in gM, temporary memory}
+// gO = nth community card
+// gP = buttons{buttons{center, radius, ID}}
+// gQ = iterator vars and trigger for initialising gM
+
+// pA = hand {cards{value, suit}}
+// pB = player current stage bet
+// pC = player turn or not
+// pD = trigger for turn actions. resting value 0, fold bet call raise check = {1, 2, 3, 4, 5} respectively.
+// pE = trigger for end turn module
+// pF = acted this stage
+// pG = proposed bet
+// pZ = player score for testing purposes
+
+
 
 //UI and housekeeping___________________________________________________________
 rule("Init global vars")
@@ -42,7 +41,6 @@ rule("Init global vars")
     actions
     {
         // It's not necessary to initialise all of these, but I do it for peace of mind
-        // Note: all 2D arrays unavoidably(?) have Null at index 0
         Set Global Variable(A, 200);
         Set Global Variable(B, 5);
         Set Global Variable(C, 0);
@@ -66,14 +64,15 @@ rule("Init global vars")
             Modify Global Variable(K, Append To Array, 0.175);
             Modify Global Variable(K, Append To Array, 0.5);
             Modify Global Variable(K, Append To Array, 1.5);
+            Modify Global Variable(K, Append To Array, 6);
         Set Global Variable(L, 10);
         Set Global Variable(M, Empty Array);
         Set Global Variable(N, Empty Array);
             Modify Global Variable(N, Append To Array, False);
             Modify Global Variable(N, Append To Array, Null);
             Modify Global Variable(N, Append To Array, Null);
-            Modify Global Variable(N, Append To Array, Null);
-            Modify Global Variable(N, Append To Array, Null);
+            Modify Global Variable(N, Append To Array, 0);
+            Modify Global Variable(N, Append To Array, Empty Array);
         Set Global Variable(O, 0);
         Set Global Variable(P, Empty Array);
             Modify Global Variable(P, Append To Array, Empty Array);
@@ -202,7 +201,7 @@ rule("Deck generation / init")
         
         // Loop from gQ[0] = 2-14
             // Loop from gQ[1] = 0-3
-                // Append to gM gQ[0], gQ[1], gK[0][1], Null
+                // Append gQ[0], gQ[1], gK[0][1], Null to gM
                 Modify Global Variable(M, Append To Array, Value In Array(Global Variable(Q), 0));
                 Modify Global Variable(M, Append To Array, Value In Array(Global Variable(Q), 1));
                 Modify Global Variable(M, Append To Array, Value In Array(Value In Array(Global Variable(K), 0), 1));
@@ -231,6 +230,7 @@ rule("Deck generation / create and link objects to their corresponding elements"
 
     actions
     {
+        // See deck_gen.c
         Create Effect(
             Value In Array(Global Variable(M), 3),
             Sphere, Red,
@@ -962,55 +962,44 @@ rule("Deck generation / create and link objects to their corresponding elements"
 }
 
 //card dealing__________________________________________________________________
-
-// deal random card
-/*
-    gN[0] = trigger
-    gN[1] = visible to
-    gN[2] = position
-    gN[3] = random value in gM
-    gN[4] = temporary memory for module
-*/
-
-if gN[0] = true
+rule("Deal card")
 {
-    // update only visible to for all
+    event
+	{
+		Ongoing - Global;
+	}
 
-    gN[3] = random value in gM
-    remove gN[3] in gM
+    conditions
+    {
+        Compare(Value In Array(Global Variable(N), 0), ==, True) == True;
+    }
 
-    if visible to 1 person:
-    switch gN[3][1]
-        = 0
-            create effect sphere r = gK[3] at gN[2], colour = red, visible to gN[1]
-        = 1
-            create effect sphere r = gK[3] at gN[2], colour = blue, visible to gN[1]
-        = 2
-            create effect sphere r = gK[3] at gN[2], colour = yellow, visible to gN[1]
-        = 3
-            create effect sphere r = gK[3] at gN[2, colour = green, visible to gN[1]
-    
-    append ID of last created effect to gN[4]
+    actions
+    {
+        skip 2 if gN[3] != Null
 
-    switch gN[3][0]
-        = 2-10
-            create in-world text at gN[2], value = gN[3][0], visible to gN[1]
-        = 11
-            create in-world text at gN[2], junkrat icon, visible to gN[1]
-        = 12
-            create in-world text at gN[2], mercy icon, visible to gN[1]
-        = 13
-            create in-world text at gN[2], reinhardt icon, visible to gN[1]
-        = 14
-            create in-world text at gN[2], tracer icon, visible to gN[1]
-    
-    append ID of last created text to gN[4]
+        gN[3] = 4*rand int(0, 51);
+        gM[gN[3] + 3] = gN[1]
 
-    if gN[1] is a player, append gN[4] to pA of that player
-    else append gN[4] to gD
+        // Loop until nearby
+            gM[gN[3] + 2] += Vector Towards(gM[gN[3] + 2], gN[2]) / gK[5]
+            wait 0.016, ignore conditions
+        loop if Distance Between(gM[gN[3] + 2], gN[2]) < 0.1
 
-    gN[4] = empty array
-    gN[0] = false
+        gM[gN[3] + 2] = gN[2]
+        
+        gN[4] = Empty Array
+        append gM[gN[3] + 0] to gN[4]
+        append gM[gN[3] + 1] to gN[4]
+
+        if gN[1] == All Players
+            append gN[4] to gD
+        else
+            append gN[4] to pA(gn[1])
+        
+        gN[3] = Null
+        gN[0] = false
+    }
 }
 
 //stages________________________________________________________________________
