@@ -10,7 +10,7 @@ gI = temporary variable for updating gG in disconnect cases
 gJ = current stage leading bet
 gK = physical game object info {pot{center, radius}, community card positions[5], card sphere radius, chips/score units above eye level, current bet distance from feet}
 gL = modify bet increment
-gM = deck{cards{value from 2-14, suit from 0-3, center, effect ID, text ID, visible to}}
+gM = deck{cards{value from 2-14, suit from 0-3, center, visible to, effect ID, text ID}}
 gN = deal card interface
     gN[0] = trigger
     gN[1] = visible to
@@ -19,6 +19,7 @@ gN = deal card interface
     gN[4] = temporary memory for module
 gO = nth community card
 gP = buttons{buttons{center, radius, ID}}
+gQ = iterator vars for initialising gM
 
 pA = array, hand
 pB = player current stage bet
@@ -94,6 +95,7 @@ rule("Init global vars")
                 Modify Global Variable At Index(P, 4, Append To Array, Add(Value In Array(Value In Array(Global Variable(K), 0), 1), Vector(0, 6.4, 0)));
                 Modify Global Variable At Index(P, 4, Append To Array, 0.5);
                 Modify Global Variable At Index(P, 4, Append To Array, 5);
+        Set Global Variable(Q, Empty Array);
     }
 }
 
@@ -106,49 +108,135 @@ rule("Init global var M - deck")
 
     conditions
     {
-        gM == empty array
+        Compare(Global Variable(Q), ==, Empty Array) == True;
     }
-    
+
     actions
     {
         // gM = deck{cards{value from 2-14, suit from 0-3, center, visible to, effect ID, text ID}}
-        Set Global Variable(M, Empty Array);
-        gM = empty array
+        // Current index in deck = i
+        //                       = 4(gQ[0] - 2) + gQ[1]
+        //                       = Add(Multiply(4, Subtract(Value In Array(Global Variable(Q), 0), 2)), Value In Array(Global Variable(Q), 1))
 
-        // current index = i = 4(var1 - 2) + var2
-        set var1 = 2
-            set var2 = 0
-                append to gM var1, var2, gK[0][1], null
-                // visible to gM[i][4]
-                switch gM[i][2]
-                    = 0
-                        create effect sphere r = gK[3] at gM[i][3], colour = red
-                    = 1
-                        create effect sphere r = gK[3] at gM[i][3], colour = blue
-                    = 2
-                        create effect sphere r = gK[3] at gM[i][3], colour = yellow
-                    = 3
-                        create effect sphere r = gK[3] at gM[i][3], colour = green
-                
-                append to gM[i] ID of last created effect
+        // This wait is shared by the two loops in this rule
+        Wait(0.016, Ignore Condition);
 
-                switch gM[i][1]
-                    = 2-10
-                        create in-world text at gM[i][3], value = gM[i][1]
-                    = 11
-                        create in-world text at gM[i][3], junkrat icon
-                    = 12
-                        create in-world text at gM[i][3], mercy icon
-                    = 13
-                        create in-world text at gM[i][3], reinhardt icon
-                    = 14
-                        create in-world text at gM[i][3], tracer icon
+        Skip If(Compare(Global Variable(Q), !=, Empty Array), 2);
+        Modify Global Variable(Q, Append To Array, 2);
+        Modify Global Variable(Q, Append To Array, 0);
+        
+        // Loop from gQ[0] = 2-14
+            // Loop from gQ[1] = 0-3
+                // Append to gM gQ[0], gQ[1], gK[0][1], Null
+                Modify Global Variable(M, Append To Array, Empty Array);
+                    Modify Global Variable At Index(M, Add(Multiply(4, Subtract(Value In Array(Global Variable(Q), 0), 2)), Value In Array(Global Variable(Q), 1)), Append To Array, Value In Array(Global Variable(Q), 0));
+                    Modify Global Variable At Index(M, Add(Multiply(4, Subtract(Value In Array(Global Variable(Q), 0), 2)), Value In Array(Global Variable(Q), 1)), Append To Array, Value In Array(Global Variable(Q), 1));
+                    Modify Global Variable At Index(M, Add(Multiply(4, Subtract(Value In Array(Global Variable(Q), 0), 2)), Value In Array(Global Variable(Q), 1)), Append To Array, Value In Array(Value In Array(Global Variable(K), 0), 1));
+                    Modify Global Variable At Index(M, Add(Multiply(4, Subtract(Value In Array(Global Variable(Q), 0), 2)), Value In Array(Global Variable(Q), 1)), Append To Array, Null);
                 
-                append to gM[i] ID of last created in-world text
-            var2++
-            loop if var2 <= 3
-        var1++
-        loop if var1 <= 14
+                // Create effects at gM[i][3], visible to gM[i][4], radius = gK[3], reevaluate all, varying colour based on gM[i][2]
+                // Switch gM[i][2] = 0, 1, 2, 3
+                Skip If(Compare(Value In Array(Value In Array(Global Variable(M), Add(Multiply(4, Subtract(Value In Array(Global Variable(Q), 0), 2)), Value In Array(Global Variable(Q), 1))), 2), !=, 0), 1);
+                    Create Effect(
+                        Value In Array(Value In Array(Global Variable(M), Add(Multiply(4, Subtract(Value In Array(Global Variable(Q), 0), 2)), Value In Array(Global Variable(Q), 1))), 4),
+                        Sphere, Red,
+                        Value In Array(Value In Array(Global Variable(M), Add(Multiply(4, Subtract(Value In Array(Global Variable(Q), 0), 2)), Value In Array(Global Variable(Q), 1))), 3),
+                        Value In Array(Global Variable(K), 3),
+                        Visible To Position and Radius
+                    );
+                Skip If(Compare(Value In Array(Value In Array(Global Variable(M), Add(Multiply(4, Subtract(Value In Array(Global Variable(Q), 0), 2)), Value In Array(Global Variable(Q), 1))), 2), !=, 1), 1);
+                    Create Effect(
+                        Value In Array(Value In Array(Global Variable(M), Add(Multiply(4, Subtract(Value In Array(Global Variable(Q), 0), 2)), Value In Array(Global Variable(Q), 1))), 4),
+                        Sphere, Blue,
+                        Value In Array(Value In Array(Global Variable(M), Add(Multiply(4, Subtract(Value In Array(Global Variable(Q), 0), 2)), Value In Array(Global Variable(Q), 1))), 3),
+                        Value In Array(Global Variable(K), 3),
+                        Visible To Position and Radius
+                    );
+                Skip If(Compare(Value In Array(Value In Array(Global Variable(M), Add(Multiply(4, Subtract(Value In Array(Global Variable(Q), 0), 2)), Value In Array(Global Variable(Q), 1))), 2), !=, 2), 1);
+                    Create Effect(
+                        Value In Array(Value In Array(Global Variable(M), Add(Multiply(4, Subtract(Value In Array(Global Variable(Q), 0), 2)), Value In Array(Global Variable(Q), 1))), 4),
+                        Sphere, Yellow,
+                        Value In Array(Value In Array(Global Variable(M), Add(Multiply(4, Subtract(Value In Array(Global Variable(Q), 0), 2)), Value In Array(Global Variable(Q), 1))), 3),
+                        Value In Array(Global Variable(K), 3),
+                        Visible To Position and Radius
+                    );
+                Skip If(Compare(Value In Array(Value In Array(Global Variable(M), Add(Multiply(4, Subtract(Value In Array(Global Variable(Q), 0), 2)), Value In Array(Global Variable(Q), 1))), 2), !=, 3), 1);
+                    Create Effect(
+                        Value In Array(Value In Array(Global Variable(M), Add(Multiply(4, Subtract(Value In Array(Global Variable(Q), 0), 2)), Value In Array(Global Variable(Q), 1))), 4),
+                        Sphere, Green,
+                        Value In Array(Value In Array(Global Variable(M), Add(Multiply(4, Subtract(Value In Array(Global Variable(Q), 0), 2)), Value In Array(Global Variable(Q), 1))), 3),
+                        Value In Array(Global Variable(K), 3),
+                        Visible To Position and Radius
+                    );
+                
+                Modify Global Variable At Index(M, Add(Multiply(4, Subtract(Value In Array(Global Variable(Q), 0), 2)), Value In Array(Global Variable(Q), 1)), Append To Array, Last Created Entity);
+                
+                // Create effect at gM[i][3], visible to gM[i][4], radius = gK[3], varying colour based on gM[i][2]
+                    Create Effect(
+                        Value In Array(Value In Array(Global Variable(M), x)), 4),
+                        Sphere, // Green,
+                        Value In Array(Value In Array(Global Variable(M), x)), 3),
+                        Value In Array(Global Variable(K), 3), Visible To Position and Radius
+                    );
+                
+                // Create in-world text at gM[i][3], visible to gM[i][4], varying value based on gM[i][1]
+                    Create In-World Text(
+                        Value In Array(Value In Array(Global Variable(M), x)), 4),
+                        // Hero Icon String(Hero(Tracer)),
+                        Value In Array(Value In Array(Global Variable(M), x)), 3),
+                        1, Do Not Clip, Visible To Position and String
+                    );
+
+                // Create in-world text at gM[i][3], visible to gM[i][4], reevaluate all, varying value based on gM[i][1]
+                // Switch gM[i][1] = 2-10, 11, 12, 13, 14
+                Skip If(Compare(Subtract(Value In Array(Value In Array(Global Variable(M), Add(Multiply(4, Subtract(Value In Array(Global Variable(Q), 0), 2)), Value In Array(Global Variable(Q), 1))), 1), 10), >, 0), 1);
+                    Create In-World Text(
+                        Value In Array(Value In Array(Global Variable(M), Add(Multiply(4, Subtract(Value In Array(Global Variable(Q), 0), 2)), Value In Array(Global Variable(Q), 1))), 4),
+                        Value In Array(Value In Array(Global Variable(M), Add(Multiply(4, Subtract(Value In Array(Global Variable(Q), 0), 2)), Value In Array(Global Variable(Q), 1))), 1),
+                        Value In Array(Value In Array(Global Variable(M), Add(Multiply(4, Subtract(Value In Array(Global Variable(Q), 0), 2)), Value In Array(Global Variable(Q), 1))), 3),
+                        1, Do Not Clip,
+                        Visible To Position and String
+                    );
+                Skip If(Compare(Value In Array(Value In Array(Global Variable(M), Add(Multiply(4, Subtract(Value In Array(Global Variable(Q), 0), 2)), Value In Array(Global Variable(Q), 1))), 1), !=, 11), 1);
+                    Create In-World Text(
+                        Value In Array(Value In Array(Global Variable(M), Add(Multiply(4, Subtract(Value In Array(Global Variable(Q), 0), 2)), Value In Array(Global Variable(Q), 1))), 4),
+                        Hero Icon String(Hero(Junkrat)),
+                        Value In Array(Value In Array(Global Variable(M), Add(Multiply(4, Subtract(Value In Array(Global Variable(Q), 0), 2)), Value In Array(Global Variable(Q), 1))), 3),
+                        1, Do Not Clip,
+                        Visible To Position and String
+                    );
+                Skip If(Compare(Value In Array(Value In Array(Global Variable(M), Add(Multiply(4, Subtract(Value In Array(Global Variable(Q), 0), 2)), Value In Array(Global Variable(Q), 1))), 1), !=, 12), 1);
+                    Create In-World Text(
+                        Value In Array(Value In Array(Global Variable(M), Add(Multiply(4, Subtract(Value In Array(Global Variable(Q), 0), 2)), Value In Array(Global Variable(Q), 1))), 4),
+                        Hero Icon String(Hero(Mercy)),
+                        Value In Array(Value In Array(Global Variable(M), Add(Multiply(4, Subtract(Value In Array(Global Variable(Q), 0), 2)), Value In Array(Global Variable(Q), 1))), 3),
+                        1, Do Not Clip,
+                        Visible To Position and String
+                    );
+                Skip If(Compare(Value In Array(Value In Array(Global Variable(M), Add(Multiply(4, Subtract(Value In Array(Global Variable(Q), 0), 2)), Value In Array(Global Variable(Q), 1))), 1), !=, 13), 1);
+                    Create In-World Text(
+                        Value In Array(Value In Array(Global Variable(M), Add(Multiply(4, Subtract(Value In Array(Global Variable(Q), 0), 2)), Value In Array(Global Variable(Q), 1))), 4),
+                        Hero Icon String(Hero(Reinhardt)),
+                        Value In Array(Value In Array(Global Variable(M), Add(Multiply(4, Subtract(Value In Array(Global Variable(Q), 0), 2)), Value In Array(Global Variable(Q), 1))), 3),
+                        1, Do Not Clip,
+                        Visible To Position and String
+                    );
+                Skip If(Compare(Value In Array(Value In Array(Global Variable(M), Add(Multiply(4, Subtract(Value In Array(Global Variable(Q), 0), 2)), Value In Array(Global Variable(Q), 1))), 1), !=, 14), 1);
+                    Create In-World Text(
+                        Value In Array(Value In Array(Global Variable(M), Add(Multiply(4, Subtract(Value In Array(Global Variable(Q), 0), 2)), Value In Array(Global Variable(Q), 1))), 4),
+                        Hero Icon String(Hero(Tracer)),
+                        Value In Array(Value In Array(Global Variable(M), Add(Multiply(4, Subtract(Value In Array(Global Variable(Q), 0), 2)), Value In Array(Global Variable(Q), 1))), 3),
+                        1, Do Not Clip,
+                        Visible To Position and String
+                    );
+                
+                Modify Global Variable At Index(M, Add(Multiply(4, Subtract(Value In Array(Global Variable(Q), 0), 2)), Value In Array(Global Variable(Q), 1)), Append To Array, Last Text ID); 
+
+            Modify Global Variable At Index(Q, 1, Add, 1);
+            Loop If(Compare(Value In Array(Global Variable(Q), 1), <=, 3));
+            Set Global Variable At Index(Q, 1, 0);
+        Modify Global Variable At Index(Q, 0, Add, 1);
+	    Loop If(Compare(Value In Array(Global Variable(Q), 0), <=, 14));
     }
 }
 
@@ -184,7 +272,7 @@ rule("Display global UI")
 	actions
 	{
         // Current player
-	    Create Effect(All Players(All Teams), Ring, White, First Of(Filtered Array(All Players(All Teams), Player Variable(Current Array Element, C))), 5, Visible To Position and Radius);
+	    Create Effect(All Players(All Teams), Ring, White, Position Of(First Of(Filtered Array(All Players(All Teams), Player Variable(Current Array Element, C)))), 5, Visible To Position and Radius);
         
         // Pot
 	    Create Effect(All Players(All Teams), Orb, Yellow, Value In Array(Value In Array(Global Variable(K), 0), 1), Value In Array(Value In Array(Global Variable(K), 0), 2), Visible To);
