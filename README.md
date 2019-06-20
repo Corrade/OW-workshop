@@ -1,5 +1,5 @@
 # Hitscan detection of spheres without raymarching
-## code.txt
+## code.ow
 This file contains the code snippet that performs the action.
 
 In this code I'm assuming you'd like to detect hitscan from an event player's eye position in the direction they're facing. If this isn't suitable for your project, please check the [explanation](#explanation) section and make the appropriate changes.
@@ -8,10 +8,10 @@ Let player variable `C` (`pC`) be the center of the object, `pR` be the radius o
 
 
 
-## demo.txt
+## demo_code.ow
 This file contains the code for a small demo of the action.
 
-Additionally you can watch the demo [here](https://giant.gfycat.com/DirectDizzyFrog.webm) or import it using `76X8K` if you're on PTR (1.37).
+Additionally you can watch the demo [here](https://giant.gfycat.com/DirectDizzyFrog.webm) or import it using `76X8K` if you're on an OW version 1.37 or later.
 
 In the demo you can press `ability 1` to update the position of the object, which is a blue sphere.
 
