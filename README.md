@@ -4,6 +4,7 @@ See `code.txt` for the code in text format or use the following import codes.
 
 - v1.0.0: `3V02C`
 - v1.1.0: `BFSDJ`
+- v1.2.0: `60DSZ`
 
 
 
@@ -59,22 +60,5 @@ See `code.txt` for the code in text format or use the following import codes.
 - Made refreshing restore a more current position.
 - Fixed bugs with the teleport module used by the smart respawn and refresh features.
 
-
-
-## Variables
-gA: Score limit.
-pA: Whether or not to disable instant respawn.
-pB: Array of `{outcome(1), scores(2), heroes(2)}` describing the rounds the player has participated in.
-pC: Size of pB, necessarily a multiple of 5.
-pD: Round result where loss = `1`, win = `2`, incomplete = `3`, resting value = `0`.
-pE: Proposed spawn for smart respawn, resting value  = `0`. Also a checkpoint in smart respawn.
-pF: Array of `{the most recent opponent, score of most recent opponent, hero of most recent opponent}`.
-pG: Whether or not there is an opponent.
-pH: Saved position of the opponent for smart respawn.
-pI: Loop counter.
-pJ: Trigger for print round module.
-pK: Array of `{teleport position, exit facing direction, exit velocity}` for teleport module. If an argument is `999`, the teleport module applies special values.
-pL: Whether or not to skip printing a blank line in print round module.
-pM: Triggers refresh if `True`, resting value = `False`.
-pN: Triggers teleport module if `999`, resting value = `0`.
-pO: Health percentage for moderating scoring for hero changes.
+### v1.2.0
+- Refactored many rules and tidied up everything.

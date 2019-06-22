@@ -1,8 +1,51 @@
 /*
-gA = Score limit.
-*/
+101 by Corrade. Classic 1v1 streamlined for practicing raw deathmatch. Based on Lange's TF2 mod, MGE.    Ult: Change heroes. If you're not at full health you'll lose a point.    Crouch+interact: Display the round history.    [v1.2.0]
 
-/*
+MODES
+- Deathmatch
+    - Spawn Health Packs: Disabled
+MAPS
+- Deathmatch
+    - Disabled
+        - Black Forest
+        - Castillo
+        - Chateau Guillard
+        - Ecopoint: Antarctica
+        - Necropolis
+        - Petra
+HEROES
+- Disabled
+    - Bastion
+    - Brigitte
+    - D.va
+    - Moira
+    - Orisa
+    - Reinhardt
+    - Roadhog
+    - Winston
+    - Wrecking Ball
+    - Zarya
+- General
+    - Ultimate Ability: Off
+- Baptiste
+    - Immortality Field: Off
+- Symmetra
+    - Sentry Turret: Off
+- Torbjorn
+    - Deploy Turret: Off
+
+
+
+Note: for 'wait until' logic (e.g. waiting for teleport module to be free and
+similar parts in teleport module), using OW's rule checking (i.e. multiple
+rules) is slower than using manually implemented fast loops. However, the
+difference is slight and the increase in code readability, imo, justifies my
+preference toward OW's rule checking.
+
+
+
+gA = Score limit.
+
 pA = Whether or not to disable instant respawn.
 pB = 2D array describing previous rounds.
     [i][0] = Putcome.
@@ -39,8 +82,9 @@ pP = Temporary memory for managing 2D arrays.
 
 
 // Housekeeping________________________________________________________________
+disabled rule("Housekeeping") {event {Ongoing - Global;}}
 
-rule(">>> Change score limit")
+rule("> Set score limit")
 {
     event
     {
@@ -53,8 +97,6 @@ rule(">>> Change score limit")
     }
 }
 
-disabled rule("") {}
-
 rule("Init player vars")
 {
     event
@@ -66,7 +108,7 @@ rule("Init player vars")
 
     conditions
     {
-        Player Variable(Event Player, B) != Empty Array;
+        Player Variable(Event Player, B) == Null;
     }
 
     actions
@@ -213,6 +255,7 @@ rule("Init game")
 
 
 // Core________________________________________________________________________
+disabled rule("Core") {event {Ongoing - Global;}}
 
 rule("Scoring")
 {
@@ -345,7 +388,7 @@ rule("Smart respawn pt2")
 
     conditions
     {
-        Compare(Player Variable(Event Player, E), ==, 1) == True;
+        Player Variable(Event Player, E) == 1;
     }
 
     actions
@@ -391,8 +434,8 @@ rule("Smart respawn pt3")
 
     conditions
     {
-        Compare(Player Variable(Event Player, E), ==, 2) == True;
-        Compare(Value In Array(Player Variable(Event Player, K), 0), ==, 0) == True;
+        Player Variable(Event Player, E) == 2;
+        Value In Array(Player Variable(Event Player, K), 0) == 0;
     }
 
     actions
@@ -420,7 +463,7 @@ rule("Refresh pt1")
 
     actions
     {
-        Skip If(And(Has Spawned(Event Player), Is Alive(Event Player)), 2)
+        Skip If(And(Has Spawned(Event Player), Is Alive(Event Player)), 2);
             Set Player Variable(Event Player, M, 0);
             Abort;
         Set Player Variable(Event Player, M, 1);
@@ -439,8 +482,8 @@ rule("Refresh pt2")
 
     conditions
     {
-        Compare(Player Variable(Event Player, M), ==, 1) == True;
-        Compare(Value In Array(Player Variable(Event Player, K), 0), ==, 0) == True;
+        Player Variable(Event Player, M) == 1;
+        Value In Array(Player Variable(Event Player, K), 0) == 0;
     }
 
     actions
@@ -541,6 +584,7 @@ rule("Hero select pt2")
 
 
 // Bookkeeping_________________________________________________________________
+disabled rule("Bookkeeping") {event {Ongoing - Global;}}
 
 // Catches a round end condition and correspondingly forks execution for
 // round reset.
@@ -619,9 +663,6 @@ rule("Round reset")
         Set Player Variable At Index(Event Player, J, 2, True);
         Set Player Variable At Index(Event Player, J, 0, True);
 
-        // Wait for print round module.
-        Wait(0.05, Ignore Condition);
-
         Set Player Score(Event Player, 0);
         Heal(Event Player, Null, 999);
         Press Button(Event Player, Ultimate);
@@ -640,8 +681,10 @@ rule("Print round history")
 
     conditions
     {
-        And(Is Button Held(Event Player, Crouch), Is Button Held(Event Player, Interact)) == True;
+        Is Button Held(Event Player, Crouch) == True;
+        Is Button Held(Event Player, Interact) == True;
         Player Variable(Event Player, I) == 0;
+        Player Variable(Event player, C) >= 0;
     }
 
     actions
@@ -652,7 +695,9 @@ rule("Print round history")
             Set Player Variable At Index(Event Player, J, 0, True);
 
             Modify Player Variable(Event Player, I, Add, 1);
-            Wait(0.016, Ignore Condition);
+
+            // Wait for print round module.
+            Wait(0.1, Ignore Condition);
         Loop If(Compare(Player Variable(Event Player, I), <=, Player Variable(Event Player, C)));
         
         // Cooldown on rule.
@@ -664,6 +709,7 @@ rule("Print round history")
 
 
 // Modules_____________________________________________________________________
+disabled rule("Modules") {event {Ongoing - Global;}}
 
 rule("Print round module")
 {
@@ -681,53 +727,43 @@ rule("Print round module")
 
     actions
     {
-        Skip If(
-            Compare(
-                Value In Array(
-                    Value In Array(Player Variable(Event Player, B), Value In Array(Player Variable(Event Player, J), 1), 0), 3
-                ),
-                ==,
-                0
-            ),
-            3
-        );
-            Skip If(Not(Value In Array(Player Variable(Event Player, J), 2)), 1);
-                Small Message(Event Player, Empty Array);
-            Small Message(
-                Event Player,
+        Skip If(Not(Value In Array(Player Variable(Event Player, J), 2)), 1);
+            Small Message(Event Player, Empty Array);
+        Small Message(
+            Event Player,
+            String(
+                "{0}:{1}",
                 String(
-                    "{0}:{1}",
-                    String(
-                        "{0} {1}",
-                        Hero Icon String(
-                            Value In Array(
-                                Value In Array(Player Variable(Event Player, B), Value In Array(Player Variable(Event Player, J), 1)),
-                                1
-                            )
-                        ),
+                    "{0} {1}",
+                    Hero Icon String(
                         Value In Array(
                             Value In Array(Player Variable(Event Player, B), Value In Array(Player Variable(Event Player, J), 1)),
-                            3
-                        ),
-                        Null
+                            1
+                        )
                     ),
-                    String(
-                        "{0} {1}",
-                        Value In Array(
-                            Value In Array(Player Variable(Event Player, B), Value In Array(Player Variable(Event Player, J), 1)),
-                            4
-                        ),
-                        Hero Icon String(
-                            Value In Array(
-                                Value In Array(Player Variable(Event Player, B), Value In Array(Player Variable(Event Player, J), 1)),
-                                2
-                            )
-                        ),
-                        Null
+                    Value In Array(
+                        Value In Array(Player Variable(Event Player, B), Value In Array(Player Variable(Event Player, J), 1)),
+                        3
                     ),
                     Null
-                )
-            );
+                ),
+                String(
+                    "{0} {1}",
+                    Value In Array(
+                        Value In Array(Player Variable(Event Player, B), Value In Array(Player Variable(Event Player, J), 1)),
+                        4
+                    ),
+                    Hero Icon String(
+                        Value In Array(
+                            Value In Array(Player Variable(Event Player, B), Value In Array(Player Variable(Event Player, J), 1)),
+                            2
+                        )
+                    ),
+                    Null
+                ),
+                Null
+            )
+        );
         
         Set Player Variable At Index(Event Player, J, 0, False);
     }
@@ -847,7 +883,9 @@ rule("Teleport module pt3")
 
 
 // Testing_____________________________________________________________________
+disabled rule("Testing") {event {Ongoing - Global;}}
 
+// Ability 1.
 disabled rule("Testing: increment score")
 {
     event
@@ -868,6 +906,7 @@ disabled rule("Testing: increment score")
     }
 }
 
+// Secondary fire.
 disabled rule("Testing: activate refresh")
 {
     event
@@ -879,7 +918,7 @@ disabled rule("Testing: activate refresh")
 
     conditions
     {
-        Is Button Held(Event Player, Primary Fire) == True;
+        Is Button Held(Event Player, Secondary Fire) == True;
         Has Spawned(Event Player) == True;
         Is Alive(Event Player) == True;
     }
@@ -890,6 +929,7 @@ disabled rule("Testing: activate refresh")
     }
 }
 
+// Any communication.
 disabled rule("Testing: killbind")
 {
     event
@@ -910,7 +950,7 @@ disabled rule("Testing: killbind")
     }
 }
 
-disabled rule("Testing: reveal")
+disabled rule("Testing: reveal all players")
 {
     event
     {
