@@ -1,10 +1,15 @@
 /*
 gA = Score limit.
+*/
+
+/*
 pA = Whether or not to disable instant respawn.
 pB = 2D array describing previous rounds.
-    [i][0] = outcome
-    [i][1,2] = score of player, opponent.
-    [i][3,4] = hero of player, opponent.
+    [i][0] = Putcome.
+    [i][1] = Score of player.
+    [i][2] = Score of opponent.
+    [i][3] = Hero of player.
+    [i][4] = Hero of opponent.
 pC = Last index of pB.
 pD = Round result where loss = 1, win = 2, incomplete = 3, resting value = 0.
 pE = Proposed spawn for smart respawn. Resting value = 0. Also a checkpoint in smart respawn.
@@ -25,7 +30,7 @@ pK = Parameter list for teleport module. If an argument is 999, the module appli
     [2] = Exit facing direction.
     [3] = Exit velocity.
 pL = 
-pM = Triggers refresh if true. Resting value = false.
+pM = Triggers refresh if 999. Resting value = 0. Also a checkpoint in refresh.
 pN =
 pO = Health percentage for moderating scoring for hero changes.
 pP = Temporary memory for managing 2D arrays.
@@ -35,8 +40,7 @@ pP = Temporary memory for managing 2D arrays.
 
 // Housekeeping________________________________________________________________
 
-// .
-rule("Set score limit")
+rule(">>> Change score limit")
 {
     event
     {
@@ -51,7 +55,6 @@ rule("Set score limit")
 
 disabled rule("") {}
 
-// .
 rule("Init player vars")
 {
     event
@@ -90,14 +93,13 @@ rule("Init player vars")
             Modify Player Variable(Event Player, K, Append To Array, Vector(0, 0, 0));
             Modify Player Variable(Event Player, K, Append To Array, Vector(0, 0, 0));
         // L
-        Set Player Variable(Event Player, M, False);
+        Set Player Variable(Event Player, M, 0);
         // N
         Set Player Variable(Event Player, O, 0);
         Set Player Variable(Event Player, P, Empty Array);
     }
 }
 
-// .
 rule("Update pF and pG")
 {
     event
@@ -143,8 +145,7 @@ rule("Update pF and pG")
                     Empty Array
                 )
             );
-            // Only update pF if there is an enemy player. This way, data of
-            // disconnected players remains stored.
+            
             Skip If(Not(Player Variable(Event Player, G)), 3);
                 Set Player Variable At Index(
                     Event Player,
@@ -159,7 +160,6 @@ rule("Update pF and pG")
     }
 }
 
-// .
 rule("Skip assembly")
 {
     event
@@ -178,7 +178,6 @@ rule("Skip assembly")
     }
 }
 
-// .
 rule("Init game")
 {
     event
@@ -215,7 +214,6 @@ rule("Init game")
 
 // Core________________________________________________________________________
 
-// .
 rule("Scoring")
 {
     event
@@ -241,7 +239,7 @@ rule("Scoring")
         Skip If(Compare(Victim, ==, Attacker), 1);
         Modify Player Score(Attacker, 1);
         Skip If(Compare(Victim, !=, Attacker), 1);
-        Modify Player Score(Victim, -1.000);
+        Modify Player Score(Victim, -1);
     }
 }
 
@@ -284,7 +282,6 @@ rule("Health check")
     }
 }
 
-// .
 rule("Instant respawn")
 {
     event
@@ -306,7 +303,9 @@ rule("Instant respawn")
 }
 
 // Respawns the player in a random position nearby their opponent.
-rule("Smart respawn")
+// Pt1: handles exit cases, store the opponent's position and triggers refresh
+// for the opponent.
+rule("Smart respawn pt1")
 {
     event
     {
@@ -323,52 +322,19 @@ rule("Smart respawn")
 
     actions
     {
-        // Loop: finish first loop, prepare call to teleport module and then
-        // wait for teleport module to be free.
-            Skip If(Compare(Player Variable(Event Player, E), ==, 1), 13);
-                // Loop: store opponent's position, trigger refresh for
-                // opponent and then generate spawn.
-                    Skip If(Compare(Player Variable(Event Player, E), !=, 0), 5);
-                        Abort If(Not(Player Variable(Event Player, G)));
-                        Abort If(Not(Has Spawned(Value In Array(Player Variable(Event Player, F), 0))));
-                        Abort If(Not(Is Alive(Value In Array(Player Variable(Event Player, F), 0))));
-                        Set Player Variable(Event Player, H, Position Of(Value In Array(Player Variable(Event Player, F), 0)));
-                        Set Player Variable(Value In Array(Player Variable(Event Player, F), 0), M, True);
-                    Set Player Variable(
-                        Event Player,
-                        E,
-                        Nearest Walkable Position(
-                            Add(
-                                Player Variable(Event Player, H),
-                                Multiply(
-                                    Random Integer(25, 35),
-                                    Normalize(Vector(Random Real(-1.000, 1), Random Real(-1.000, 1), Random Real(-1.000, 1)))
-                                )
-                            )
-                        )
-                    );
-                    Wait(0.016, Restart When True);
-                Loop If(
-                    Or(
-                        Compare(Distance Between(Player Variable(Event Player, H), Player Variable(Event Player, E)), <, 25),
-                        Compare(Distance Between(Player Variable(Event Player, H), Player Variable(Event Player, E)), >, 35)
-                    )
-                );
+        Abort If(Not(Player Variable(Event Player, G)));
+        Abort If(Not(Has Spawned(Value In Array(Player Variable(Event Player, F), 0))));
+        Abort If(Not(Is Alive(Value In Array(Player Variable(Event Player, F), 0))));
 
-                Set Player Variable At Index(Event Player, K, 1, Player Variable(Event Player, E));
-                Set Player Variable At Index(Event Player, K, 2, 999);
-                Set Player Variable At Index(Event Player, K, 3, 999);
-                Set Player Variable(Event Player, E, 1);
-            Wait(0.016, Restart When True);
-        Loop If(Compare(Value In Array(Player Variable(Event Player, K), 0), !=, 0));
-        
-        Set Player Variable At Index(Event Player, K, 0, 999);
-        Set Player Variable(Event Player, E, 0);
+        Set Player Variable(Event Player, H, Position Of(Value In Array(Player Variable(Event Player, F), 0)));
+        Set Player Variable(Value In Array(Player Variable(Event Player, F), 0), M, 999);
+        Set Player Variable(Event Player, E, 1);
     }
 }
 
-// Respawns the player in place in order to reset cooldowns, cleanse, etc.
-rule("Refresh")
+// Pt2: generates an appropriate spawn and then prepares a call to
+// teleport module.
+rule("Smart respawn pt2")
 {
     event
     {
@@ -379,30 +345,117 @@ rule("Refresh")
 
     conditions
     {
-        Player Variable(Event Player, M) == True;
+        Compare(Player Variable(Event Player, E), ==, 1) == True;
     }
 
     actions
     {
-        
-        // Loop: check other conditions and then wait for teleport module to
-        // be free.
-            Skip If(Not(Player Variable(Event Player, M)), 3);
-                Set Player Variable(Event Player, M, False);
-                Abort If(Not(Has Spawned(Event Player)));
-                Abort If(Not(Is Alive(Event Player)));
+        // Loop: generate spawn.
+            Set Player Variable(
+                Event Player,
+                E,
+                Nearest Walkable Position(
+                    Add(
+                        Player Variable(Event Player, H),
+                        Multiply(
+                            Random Integer(25, 35),
+                            Normalize(Vector(Random Real(-1, 1), Random Real(-1, 1), Random Real(-1, 1)))
+                        )
+                    )
+                )
+            );
             Wait(0.016, Restart When True);
-        Loop If(Compare(Value In Array(Player Variable(Event Player, K), 0), !=, 0));
-        
+        Loop If(
+            Or(
+                Compare(Distance Between(Player Variable(Event Player, H), Player Variable(Event Player, E)), <, 25),
+                Compare(Distance Between(Player Variable(Event Player, H), Player Variable(Event Player, E)), >, 35)
+            )
+        );
+
+        Set Player Variable At Index(Event Player, K, 1, Player Variable(Event Player, E));
+        Set Player Variable At Index(Event Player, K, 2, 999);
+        Set Player Variable At Index(Event Player, K, 3, 999);
+        Set Player Variable(Event Player, E, 2);
+    }
+}
+
+// Pt3: activates teleport module as soon as it's free.
+rule("Smart respawn pt3")
+{
+    event
+    {
+        Ongoing - Each Player;
+        All;
+        All;
+    }
+
+    conditions
+    {
+        Compare(Player Variable(Event Player, E), ==, 2) == True;
+        Compare(Value In Array(Player Variable(Event Player, K), 0), ==, 0) == True;
+    }
+
+    actions
+    {
+        Set Player Variable At Index(Event Player, K, 0, 999);
+        Set Player Variable(Event Player, E, 0);
+    }
+}
+
+// Respawns the player in place in order to reset cooldowns, cleanse, etc.
+// Pt1: handles exit cases. 
+rule("Refresh pt1")
+{
+    event
+    {
+        Ongoing - Each Player;
+        All;
+        All;
+    }
+
+    conditions
+    {
+        Player Variable(Event Player, M) == 999;
+    }
+
+    actions
+    {
+        Skip If(And(Has Spawned(Event Player), Is Alive(Event Player)), 2)
+            Set Player Variable(Event Player, M, 0);
+            Abort;
+        Set Player Variable(Event Player, M, 1);
+    }
+}
+
+// Pt2: respawns the player and activates teleport module as soon as it's free.
+rule("Refresh pt2")
+{
+    event
+    {
+        Ongoing - Each Player;
+        All;
+        All;
+    }
+
+    conditions
+    {
+        Compare(Player Variable(Event Player, M), ==, 1) == True;
+        Compare(Value In Array(Player Variable(Event Player, K), 0), ==, 0) == True;
+    }
+
+    actions
+    {
         Set Player Variable At Index(Event Player, K, 1, Position Of(Event Player));
         Set Player Variable At Index(Event Player, K, 2, Facing Direction Of(Event Player));
         Set Player Variable At Index(Event Player, K, 3, Velocity Of(Event Player));
         Respawn(Event Player);
         Set Player Variable At Index(Event Player, K, 0, 999);
+
+        Set Player Variable(Event Player, M, 0);
     }
 }
 
-// Give spawn protection.
+// Gives spawn protections.
 rule("Respite")
 {
     event
@@ -435,8 +488,8 @@ rule("Respite")
     }
 }
 
-// .
-rule("Hero select")
+// Pt1: disables instant respawn and kills the player.
+rule("Hero select pt1")
 {
     event
     {
@@ -453,14 +506,34 @@ rule("Hero select")
 
     actions
     {
-        // Loop: kill then wait until the player is alive.
-            Skip If(Not(Is Alive(Event Player)), 3);
-                Set Player Variable(Event Player, A, True);
-                Set Player Variable(Event Player, O, Normalized Health(Event Player));
-                Kill(Event Player, Null);
-            Wait(1, Ignore Condition);
-        Loop If(Not(Is Alive(Event Player)));
+        Set Player Variable(Event Player, A, True);
+        Set Player Variable(Event Player, O, Normalized Health(Event Player));
+        Kill(Event Player, Null);
+    }
+}
 
+// Pt2: re-enables instant respawn as soon as the player has respawned.
+rule("Hero select pt2")
+{
+    event
+    {
+        Ongoing - Each Player;
+        All;
+        All;
+    }
+
+    conditions
+    {
+        Player Variable(Event Player, A) == True;
+        Is Alive(Event Player) == True;
+    }
+
+    actions
+    {
+        // Catch the instant between setting pA = true and killing the player
+        // in which this rule will activate.
+        Wait(0.5, Abort When False);
+        
         Set Player Variable(Event Player, A, False);
     }
 }
@@ -556,7 +629,6 @@ rule("Round reset")
     }
 }
 
-// Prints all of pB.
 rule("Print round history")
 {
     event
@@ -593,7 +665,6 @@ rule("Print round history")
 
 // Modules_____________________________________________________________________
 
-// Prints a round in pB given an index pI.
 rule("Print round module")
 {
     event
@@ -662,8 +733,9 @@ rule("Print round module")
     }
 }
 
-// This rule sequence is needed because some actions, such as respawning
-// and set facing, have strange delays that must be waited for.
+// This rule sequence is needed because teleporting and set facing, have
+// strange delays/requirements that must be waited for.
+// Pt1: cancels motion.
 rule("Teleport module pt1")
 {
     event
@@ -680,7 +752,6 @@ rule("Teleport module pt1")
 
     actions
     {
-        // Motion-cancelling impulse.
         Apply Impulse(
             Event Player, Multiply(-1.000, Velocity Of(Event Player)), Square Root(Dot Product(Velocity Of(Event Player), Velocity Of(Event Player))), To World, Incorporate Contrary Motion
         );
@@ -690,7 +761,7 @@ rule("Teleport module pt1")
     }
 }
 
-// .
+// Pt2: ensures teleportation works.
 rule("Teleport module pt2")
 {
     event
@@ -726,7 +797,8 @@ rule("Teleport module pt2")
     }
 }
 
-// .
+// Pt3: ensures set facing works, applies the exit velocity and restores
+// motion.
 rule("Teleport module pt3")
 {
     event
@@ -763,7 +835,6 @@ rule("Teleport module pt3")
         Skip If(Compare(Value In Array(Player Variable(Event Player, K), 3), !=, 999), 1);
             Set Player Variable At Index(Event Player, K, 3, Multiply(5, Normalize(Value In Array(Player Variable(Event Player, K), 2))));
         
-        // Restore motion and apply the exit velocity.
         Set Gravity(Event Player, 100);
         Apply Impulse(
             Event Player, Value In Array(Player Variable(Event Player, K), 3), Square Root(Dot Product(Value In Array(Player Variable(Event Player, K), 3), Value In Array(Player Variable(Event Player, K), 3))), To World, Incorporate Contrary Motion
@@ -815,7 +886,7 @@ disabled rule("Testing: activate refresh")
 
     actions
     {
-        Set Player Variable(Event Player, M, True);
+        Set Player Variable(Event Player, M, 999);
     }
 }
 
