@@ -1,10 +1,10 @@
-# Streamlined 1v1 - Introducing 101
+# 101: Streamlined 1v1
 ## Code
 See `code.txt` for the code in text format or use the following import codes.
 
 - v1.0.0: `3V02C`
 - v1.1.0: `BFSDJ`
-- v1.2.0: `60DSZ`
+- v1.2.0: `5XWAR`
 
 
 

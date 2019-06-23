@@ -269,9 +269,9 @@ rule("Scoring")
     conditions
     {
         Or(
-            Compare(Player Variable(Event Player, A), ==, 0),
+            Not(Player Variable(Event Player, A)),
             And(
-                Compare(Player Variable(Event Player, A), ==, 1),
+                Player Variable(Event Player, A),
                 Compare(Player Variable(Event Player, O), !=, 1)
             )
         ) == True;
@@ -663,9 +663,15 @@ rule("Round reset")
         Set Player Variable At Index(Event Player, J, 2, True);
         Set Player Variable At Index(Event Player, J, 0, True);
 
+        // Wait for the opponent's round reset before resetting score.
+        Wait(0.1, Ignore Condition);
+
         Set Player Score(Event Player, 0);
-        Heal(Event Player, Null, 999);
-        Press Button(Event Player, Ultimate);
+
+        Set Player Variable(Event Player, A, True);
+        Set Player Variable(Event Player, O, 1);
+        Kill(Event Player, Null);
+
         Set Player Variable(Event Player, D, 0);
     }
 }
