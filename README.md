@@ -62,3 +62,9 @@ See `code.txt` for the code in text format or use the following import codes.
 
 ### v1.2.0
 - Refactored many rules and tidied up everything.
+
+### v1.3.0
+- Sharpened UI and messages.
+- Fixed a player's score being able to change when they didn't have an opponent.
+- Replaced pG using 'entity exists' and replaced pC using 'count of'.
+- Disabled move speed in teleport module.
