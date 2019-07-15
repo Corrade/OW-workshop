@@ -33,7 +33,7 @@ rule("Testing falses")
 
 	conditions
 	{
-		Compare(Players In Slot(0, All Teams), !=, False) == True;
+		Is Alive(Players In Slot(0, All Teams)) == True;
 	}
 
 	actions
