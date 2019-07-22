@@ -1,11 +1,17 @@
 /*
-101 by Corrade. Classic 1v1 streamlined for practicing raw deathmatch. Based on Lange's TF2 mod, MGE.    Ult: Change heroes. If you're not at full health you'll lose a point.    Crouch+interact: Display the round history.    [v1.3.0]
+Description ___________________________________________________________________
 
-MODES
-- Deathmatch
-    - Spawn Health Packs: Disabled
-MAPS
-- Deathmatch
+101: Streamlined 1v1. This mode sheds the slowness and clunkiness of default 1v1 without distorting the balance or mechanics of regular Overwatch. Based on Lange's TF2 mod, MGE.    [v1.3.0 by Corrade: more info @ workshop.elohell.gg/uVYxfgMIq]
+
+
+
+Settings ______________________________________________________________________
+
+Modes
+    - Deathmatch
+        - Spawn Health Packs: Disabled
+Maps
+    - Deathmatch
     - Disabled
         - Black Forest
         - Castillo
@@ -13,36 +19,30 @@ MAPS
         - Ecopoint: Antarctica
         - Necropolis
         - Petra
-HEROES
-- Disabled
-    - Bastion
-    - Brigitte
-    - D.va
-    - Moira
-    - Orisa
-    - Reinhardt
-    - Roadhog
-    - Winston
-    - Wrecking Ball
-    - Zarya
-- General
-    - Ultimate Ability: Off
-- Baptiste
-    - Immortality Field: Off
-- Symmetra
-    - Sentry Turret: Off
-- Torbjorn
-    - Deploy Turret: Off
+Heroes
+    - Disabled
+        - Bastion
+        - Brigitte
+        - D.va
+        - Moira
+        - Orisa
+        - Reinhardt
+        - Roadhog
+        - Winston
+        - Wrecking Ball
+        - Zarya
+    - General
+        - Ultimate Ability: Off
+    - Baptiste
+        - Immortality Field: Off
+    - Symmetra
+        - Sentry Turret: Off
+    - Torbjorn
+        - Deploy Turret: Off
 
 
 
-Note: for 'wait until' logic (e.g. waiting for teleport module to be free and
-similar parts in teleport module), using OW's rule checking (i.e. multiple
-rules) is slower than using manually implemented fast loops. However, the
-difference is slight and the increase in code readability, imo, justifies my
-preference toward OW's rule checking.
-
-
+Variables _____________________________________________________________________
 
 gA = Score limit.
 
@@ -53,14 +53,14 @@ pB = 2D array describing previous rounds.
     [i][2] = Score of opponent.
     [i][3] = Hero of player.
     [i][4] = Hero of opponent.
-//
+pC = Most recent hero of player.
 pD = Round result where loss = 1, win = 2, incomplete = 3, resting value = 0.
 pE = Proposed spawn for smart respawn. Resting value = 0. Also a checkpoint in smart respawn.
 pF = Array of recent opponent info.
     [0] = The most recent opponent.
     [1] = Score of most recent opponent.
     [2] = Hero of most recent opponent.
-//
+pG (unused)
 pH = Saved position of the opponent for smart respawn.
 pI = Loop counter for print round history.
 pJ = Parameter list for print round module.
@@ -72,16 +72,17 @@ pK = Parameter list for teleport module. If an argument is 999, the module appli
     [1] = Teleport destination.
     [2] = Exit facing direction.
     [3] = Exit velocity.
-//
+pL (unused)
 pM = Triggers refresh if 999. Resting value = 0. Also a checkpoint in refresh.
-//
+pN (unused)
 pO = Health percentage for moderating scoring for hero changes.
 pP = Temporary memory for managing 2D arrays.
 */
 
 
 
-// Housekeeping________________________________________________________________
+// Housekeeping _______________________________________________________________
+
 disabled rule("Housekeeping") {event {Ongoing - Global;}}
 
 // Init global vars, but there's only gA = score limit.
@@ -194,7 +195,7 @@ rule("Init player vars")
     {
         Set Player Variable(Event Player, A, False);
         Set Player Variable(Event Player, B, Empty Array);
-        // C
+        Set Player Variable(Event Player, C, Null);
         Set Player Variable(Event Player, D, 0);
         Set Player Variable(Event Player, E, 0);
         Set Player Variable(Event Player, F, Empty Array);
@@ -308,9 +309,64 @@ rule("Apply game settings")
     }
 }
 
+rule("Hero select UI")
+{
+    event
+    {
+        Ongoing - Each Player;
+        All;
+        All;
+    }
+
+    conditions
+    {
+        Compare(Hero Of(Event Player), ==, Player Variable(Event Player, C)) == False;
+    }
+
+    actions
+    {
+        Set Player Variable(Event Player, C, Hero Of(Event Player));
+
+        // Catches the initial case for non-bot players where 'hero of' begins as 'unknown value'
+        Abort If(Not(Is Alive(Event player)));
+
+        Big Message(
+            Value In Array(Player Variable(Event Player, F), 0),
+            String(
+                "{0} {1} {2}",
+                Event Player,
+                String("Picked", Null, Null, Null),
+                Hero Of(Event Player)
+            )
+        );
+    }
+}
+
+rule("Player join sound")
+{
+    event
+    {
+        Ongoing - Each Player;
+        All;
+        All;
+    }
+
+    conditions
+    {
+        Entity Exists(Value In Array(Player Variable(Event Player, F), 0)) == True;
+    }
+
+    actions
+    {
+        Play Effect(Event Player, Ring Explosion Sound, White, Event Player, 100);
+        Play Effect(Event Player, Ring Explosion Sound, White, Event Player, 50);
+    }
+}
 
 
-// Core________________________________________________________________________
+
+// Core _______________________________________________________________________
+
 disabled rule("Core") {event {Ongoing - Global;}}
 
 rule("Scoring")
@@ -640,7 +696,8 @@ rule("Hero select pt2")
 
 
 
-// Bookkeeping_________________________________________________________________
+// Bookkeeping ________________________________________________________________
+
 disabled rule("Bookkeeping") {event {Ongoing - Global;}}
 
 // Catches a round end condition and correspondingly forks execution for
@@ -786,7 +843,8 @@ rule("Print round history")
 
 
 
-// Modules_____________________________________________________________________
+// Modules ____________________________________________________________________
+
 disabled rule("Modules") {event {Ongoing - Global;}}
 
 rule("Print round module")
@@ -962,7 +1020,8 @@ rule("Teleport module pt3")
 
 
 
-// Testing_____________________________________________________________________
+// Testing ____________________________________________________________________
+
 disabled rule("Testing") {event {Ongoing - Global;}}
 
 disabled rule("Testing: display server performance")
