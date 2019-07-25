@@ -23,7 +23,7 @@ Heroes
     - Disabled
         - Bastion
         - Brigitte
-        - D.va
+        - D.Va
         - Moira
         - Orisa
         - Reinhardt
@@ -45,8 +45,9 @@ Heroes
 Variables _____________________________________________________________________
 
 gA = Score limit.
+gB = Allowed heroes.
 
-pA = Whether or not to disable instant respawn.
+pA (unused)
 pB = 2D array describing previous rounds.
     [i][0] = Putcome.
     [i][1] = Score of player.
@@ -75,7 +76,7 @@ pK = Parameter list for teleport module. If an argument is 999, the module appli
 pL (unused)
 pM = Triggers refresh if 999. Resting value = 0. Also a checkpoint in refresh.
 pN (unused)
-pO = Health percentage for moderating scoring for hero changes.
+pO (unused)
 pP = Temporary memory for managing 2D arrays.
 */
 
@@ -85,7 +86,7 @@ pP = Temporary memory for managing 2D arrays.
 
 disabled rule("Housekeeping") {event {Ongoing - Global;}}
 
-// Init global vars, but there's only gA = score limit.
+// Init global vars.
 rule("[Change me!] Set score limit")
 {
     event
@@ -177,7 +178,7 @@ rule("Init UI")
     }
 }
 
-rule("Init player vars")
+rule("Init player vars and gB")
 {
     event
     {
@@ -193,7 +194,9 @@ rule("Init player vars")
 
     actions
     {
-        Set Player Variable(Event Player, A, False);
+        Set Global Variable(B, Allowed Heroes(Event Player));
+
+        // A
         Set Player Variable(Event Player, B, Empty Array);
         Set Player Variable(Event Player, C, Null);
         Set Player Variable(Event Player, D, 0);
@@ -217,7 +220,7 @@ rule("Init player vars")
         // L
         Set Player Variable(Event Player, M, 0);
         // N
-        Set Player Variable(Event Player, O, 0);
+        // O
         Set Player Variable(Event Player, P, Empty Array);
     }
 }
@@ -309,7 +312,7 @@ rule("Apply game settings")
     }
 }
 
-rule("Hero select UI")
+rule("Hero change message")
 {
     event
     {
@@ -381,13 +384,6 @@ rule("Scoring")
     conditions
     {
         Entity Exists(Value In Array(Player Variable(Event Player, F), 0)) == True;
-        Or(
-            Not(Player Variable(Event Player, A)),
-            And(
-                Player Variable(Event Player, A),
-                Compare(Player Variable(Event Player, O), !=, 1)
-            )
-        ) == True;
     }
 
     actions
@@ -445,11 +441,6 @@ rule("Instant respawn")
         Player Died;
         All;
         All;
-    }
-
-    conditions
-    {
-        Player Variable(Event Player, A) == False;
     }
 
     actions
@@ -644,8 +635,7 @@ rule("Respite")
     }
 }
 
-// Pt1: disables instant respawn and kills the player.
-rule("Hero select pt1")
+rule("Hero select")
 {
     event
     {
@@ -662,35 +652,19 @@ rule("Hero select pt1")
 
     actions
     {
-        Set Player Variable(Event Player, A, True);
-        Set Player Variable(Event Player, O, Normalized Health(Event Player));
-        Kill(Event Player, Null);
-    }
-}
+        Skip If(
+            Or(
+                Compare(Normalized Health(Event Player), ==, 1),
+                Not(Entity Exists(Value In Array(Player Variable(Event Player, F), 0)))
+            ),
+            1
+        );
+        Modify Player Score(Event Player, -1);
 
-// Pt2: re-enables instant respawn as soon as the player has respawned.
-rule("Hero select pt2")
-{
-    event
-    {
-        Ongoing - Each Player;
-        All;
-        All;
-    }
-
-    conditions
-    {
-        Player Variable(Event Player, A) == True;
-        Is Alive(Event Player) == True;
-    }
-
-    actions
-    {
-        // Catch the instant between setting pA = true and killing the player
-        // in which this rule will activate.
-        Wait(0.5, Abort When False);
-        
-        Set Player Variable(Event Player, A, False);
+        // Taken from Beemoo's aim arena.
+	    Set Player Allowed Heroes(Event Player, Remove From Array(Global Variable(B), Hero Of(Event Player)));
+		Wait(0.1, Ignore Condition);
+		Set Player Allowed Heroes(Event Player, Global Variable(B));
     }
 }
 
@@ -796,12 +770,19 @@ rule("Round reset")
         Wait(0.1, Ignore Condition);
 
         Set Player Score(Event Player, 0);
-
-        Set Player Variable(Event Player, A, True);
-        Set Player Variable(Event Player, O, 1);
-        Kill(Event Player, Null);
-
         Set Player Variable(Event Player, D, 0);
+
+        // Ensure the upcoming hero swap, triggered by pressing ult, doesn't
+        // deduct a point.
+        Set Status(Event Player, Null, Invincible, 9999);
+        Heal(Event Player, Null, 999);
+	    Start Camera(Event Player, Multiply(Facing Direction Of(Event Player), 2), Position Of(Event Player), 2);
+
+        Wait(3, Ignore Condition);
+
+        Press Button(Event Player, Ultimate);
+        Clear Status(Event Player, Invincible);
+        Stop Camera(Event Player);
     }
 }
 
@@ -1090,6 +1071,29 @@ disabled rule("Testing: increment score")
     actions
     {
         Modify Player Score(Event Player, 1);
+    }
+}
+
+// Primary + secondary fire.
+disabled rule("Testing: win round")
+{
+    event
+    {
+        Ongoing - Each Player;
+        All;
+        All;
+    }
+
+    conditions
+    {
+        Is Button Held(Event Player, Primary Fire) == True;
+        Is Button Held(Event Player, Secondary Fire) == True;
+    }
+
+    actions
+    {
+        Set Player Variable(Event Player, D, 2);
+        Set Player Variable(Value In Array(Player Variable(Event Player, F), 0), D, 1);
     }
 }
 
