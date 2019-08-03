@@ -1,7 +1,7 @@
 /*
 Description ___________________________________________________________________
 
-101: Streamlined 1v1. This mode sheds the slowness and clunkiness of default 1v1 without distorting the balance or mechanics of regular Overwatch. Based on Lange's TF2 mod, MGE.    [v1.3.0 by Corrade: more info @ workshop.elohell.gg/uVYxfgMIq]
+101: Streamlined 1v1. This mode sheds the slowness and clunkiness of default 1v1 without distorting the balance or mechanics of regular Overwatch. Based on Lange's TF2 mod, MGE.    [v1.4 by Corrade: more info @ workshop.elohell.gg/uVYxfgMIq]
 
 
 
@@ -47,7 +47,6 @@ Variables _____________________________________________________________________
 gA = Score limit.
 gB = Allowed heroes.
 
-pA (unused)
 pB = 2D array describing previous rounds.
     [i][0] = Putcome.
     [i][1] = Score of player.
@@ -61,7 +60,6 @@ pF = Array of recent opponent info.
     [0] = The most recent opponent.
     [1] = Score of most recent opponent.
     [2] = Hero of most recent opponent.
-pG (unused)
 pH = Saved position of the opponent for smart respawn.
 pI = Loop counter for print round history.
 pJ = Parameter list for print round module.
@@ -73,10 +71,7 @@ pK = Parameter list for teleport module. If an argument is 999, the module appli
     [1] = Teleport destination.
     [2] = Exit facing direction.
     [3] = Exit velocity.
-pL (unused)
 pM = Triggers refresh if 999. Resting value = 0. Also a checkpoint in refresh.
-pN (unused)
-pO (unused)
 pP = Temporary memory for managing 2D arrays.
 */
 
@@ -96,7 +91,7 @@ rule("[Change me!] Set score limit")
 
     actions
     {
-        Set Global Variable(A, 20);
+        Set Global Variable(A, 10);
     }
 }
 
@@ -196,7 +191,6 @@ rule("Init player vars and gB")
     {
         Set Global Variable(B, Allowed Heroes(Event Player));
 
-        // A
         Set Player Variable(Event Player, B, Empty Array);
         Set Player Variable(Event Player, C, Null);
         Set Player Variable(Event Player, D, 0);
@@ -205,7 +199,6 @@ rule("Init player vars and gB")
             Modify Player Variable(Event Player, F, Append To Array, Null);
             Modify Player Variable(Event Player, F, Append To Array, 0);
             Modify Player Variable(Event Player, F, Append To Array, Null);
-        // G
         Set Player Variable(Event Player, H, Vector(0, 0, 0));
         Set Player Variable(Event Player, I, 0);
         Set Player Variable(Event Player, J, Empty Array);
@@ -217,10 +210,7 @@ rule("Init player vars and gB")
             Modify Player Variable(Event Player, K, Append To Array, Vector(0, 0, 0));
             Modify Player Variable(Event Player, K, Append To Array, Vector(0, 0, 0));
             Modify Player Variable(Event Player, K, Append To Array, Vector(0, 0, 0));
-        // L
         Set Player Variable(Event Player, M, 0);
-        // N
-        // O
         Set Player Variable(Event Player, P, Empty Array);
     }
 }
@@ -309,60 +299,6 @@ rule("Apply game settings")
         Disable Built-In Game Mode Completion;
         Disable Built-In Game Mode Scoring;
         Set Match Time(0);
-    }
-}
-
-rule("Hero change message")
-{
-    event
-    {
-        Ongoing - Each Player;
-        All;
-        All;
-    }
-
-    conditions
-    {
-        Compare(Hero Of(Event Player), ==, Player Variable(Event Player, C)) == False;
-    }
-
-    actions
-    {
-        Set Player Variable(Event Player, C, Hero Of(Event Player));
-
-        // Catches the initial case for non-bot players where 'hero of' begins as 'unknown value'
-        Abort If(Not(Is Alive(Event player)));
-
-        Big Message(
-            Value In Array(Player Variable(Event Player, F), 0),
-            String(
-                "{0} {1} {2}",
-                Event Player,
-                String("Picked", Null, Null, Null),
-                Hero Of(Event Player)
-            )
-        );
-    }
-}
-
-rule("Player join sound")
-{
-    event
-    {
-        Ongoing - Each Player;
-        All;
-        All;
-    }
-
-    conditions
-    {
-        Entity Exists(Value In Array(Player Variable(Event Player, F), 0)) == True;
-    }
-
-    actions
-    {
-        Play Effect(Event Player, Ring Explosion Sound, White, Event Player, 100);
-        Play Effect(Event Player, Ring Explosion Sound, White, Event Player, 50);
     }
 }
 
@@ -663,8 +599,60 @@ rule("Hero select")
 
         // Taken from Beemoo's aim arena.
 	    Set Player Allowed Heroes(Event Player, Remove From Array(Global Variable(B), Hero Of(Event Player)));
-		Wait(0.1, Ignore Condition);
+		Wait(0.25, Ignore Condition);
 		Set Player Allowed Heroes(Event Player, Global Variable(B));
+    }
+}
+
+rule("Hero change message")
+{
+    event
+    {
+        Ongoing - Each Player;
+        All;
+        All;
+    }
+
+    conditions
+    {
+        Compare(Hero Of(Event Player), ==, Player Variable(Event Player, C)) == False;
+        Hero Of(Event Player) == True;
+    }
+
+    actions
+    {
+        Set Player Variable(Event Player, C, Hero Of(Event Player));
+
+        Big Message(
+            Value In Array(Player Variable(Event Player, F), 0),
+            String(
+                "{0} {1} {2}",
+                Event Player,
+                String("Picked", Null, Null, Null),
+                Player Variable(Event Player, C)
+            )
+        );
+    }
+}
+
+rule("Player join sound")
+{
+    event
+    {
+        Ongoing - Each Player;
+        All;
+        All;
+    }
+
+    conditions
+    {
+	    Number of Players(All Teams) == 2;
+    }
+
+    actions
+    {
+        Play Effect(Event Player, Ring Explosion Sound, White, Event Player, 100);
+        Play Effect(Event Player, Ring Explosion Sound, White, Event Player, 50);
     }
 }
 
@@ -774,15 +762,20 @@ rule("Round reset")
 
         // Ensure the upcoming hero swap, triggered by pressing ult, doesn't
         // deduct a point.
-        Set Status(Event Player, Null, Invincible, 9999);
+        Set Status(Event Player, Null, Invincible, 999);
         Heal(Event Player, Null, 999);
-	    Start Camera(Event Player, Multiply(Facing Direction Of(Event Player), 2), Position Of(Event Player), 2);
 
+	    Start Camera(
+            Event Player,
+            Add(Eye Position(Event Player), Vector(0, 150, 0)),
+            Add(Eye Position(Event Player), Vector(X Component Of(Facing Direction Of(Event Player)), 150, 0)),
+            0.010
+        );
         Wait(3, Ignore Condition);
+        Stop Camera(Event Player);
 
         Press Button(Event Player, Ultimate);
         Clear Status(Event Player, Invincible);
-        Stop Camera(Event Player);
     }
 }
 
@@ -886,7 +879,7 @@ rule("Print round module")
     }
 }
 
-// This rule sequence is needed because teleporting and set facing, have
+// This rule sequence is needed because teleporting and set facing have
 // strange delays/requirements that must be waited for.
 // Pt1: cancels motion.
 rule("Teleport module pt1")
@@ -974,7 +967,7 @@ rule("Teleport module pt3")
     {
         // Loop: set facing direction until it works, i.e. until the player
         // is roughly facing in the set direction.
-            // If pK[1] was unspecified, constantly update it to the vector
+            // If pK[2] was unspecified, constantly update it to the vector
             // from the player to their opponent.
             Skip If(Compare(Value In Array(Player Variable(Event Player, K), 0), !=, 3), 1);
                 Set Player Variable At Index(
