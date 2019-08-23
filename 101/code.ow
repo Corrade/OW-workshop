@@ -1,0 +1,1165 @@
+/*
+Description ___________________________________________________________________
+
+101: Streamlined 1v1. This mode sheds the slowness and clunkiness of default 1v1 without distorting the balance or mechanics of regular Overwatch. Based on Lange's TF2 mod, MGE.    [v1.4 by Corrade: more info @ workshop.elohell.gg/uVYxfgMIq]
+
+
+
+Settings ______________________________________________________________________
+
+Modes
+    - Deathmatch
+        - Spawn Health Packs: Disabled
+Maps
+    - Deathmatch
+    - Disabled
+        - Black Forest
+        - Castillo
+        - Chateau Guillard
+        - Ecopoint: Antarctica
+        - Necropolis
+        - Petra
+Heroes
+    - Disabled
+        - Bastion
+        - Brigitte
+        - D.Va
+        - Moira
+        - Orisa
+        - Reinhardt
+        - Roadhog
+        - Winston
+        - Wrecking Ball
+        - Zarya
+    - General
+        - Ultimate Ability: Off
+    - Baptiste
+        - Immortality Field: Off
+    - Symmetra
+        - Sentry Turret: Off
+    - Torbjorn
+        - Deploy Turret: Off
+
+
+
+Variables _____________________________________________________________________
+
+gA = Score limit.
+gB = Allowed heroes.
+
+pB = 2D array describing previous rounds.
+    [i][0] = Putcome.
+    [i][1] = Score of player.
+    [i][2] = Score of opponent.
+    [i][3] = Hero of player.
+    [i][4] = Hero of opponent.
+pC = Most recent hero of player.
+pD = Round result where loss = 1, win = 2, incomplete = 3, resting value = 0.
+pE = Proposed spawn for smart respawn. Resting value = 0. Also a checkpoint in smart respawn.
+pF = Array of recent opponent info.
+    [0] = The most recent opponent.
+    [1] = Score of most recent opponent.
+    [2] = Hero of most recent opponent.
+pH = Saved position of the opponent for smart respawn.
+pI = Loop counter for print round history.
+pJ = Parameter list for print round module.
+    [0] = Trigger = true. Resting value = false.
+    [1] = Loop counter.
+    [2] = Whether or not to print a blank line.
+pK = Parameter list for teleport module. If an argument is 999, the module applies special values.
+    [0] = Trigger = 999. Resting value = 0. Also a checkpoint in teleport module.
+    [1] = Teleport destination.
+    [2] = Exit facing direction.
+    [3] = Exit velocity.
+pM = Triggers refresh if 999. Resting value = 0. Also a checkpoint in refresh.
+pP = Temporary memory for managing 2D arrays.
+*/
+
+
+
+// Housekeeping _______________________________________________________________
+
+disabled rule("Housekeeping") {event {Ongoing - Global;}}
+
+// Init global vars.
+rule("[Change me!] Set score limit")
+{
+    event
+    {
+        Ongoing - Global;
+    }
+
+    actions
+    {
+        Set Global Variable(A, 10);
+    }
+}
+
+rule("Init UI")
+{
+    event
+    {
+        Ongoing - Global;
+    }
+
+    actions
+    {
+        Create HUD Text(
+            All Players(All Teams),
+            Null,
+            String(
+                "{0}: {1}",
+                String("Goal", Null, Null, Null),
+                String(
+                    "{0} {1}",
+                    Global Variable(A),
+                    String("Kills", Null, Null, Null),
+                    Null
+                ),
+                Null
+            ),
+            Null,
+            Top,
+            0,
+            White,
+            White,
+            White,
+            Visible To and String
+        );
+        Create HUD Text(
+            All Players(All Teams),
+            Null,
+            Null,
+            String(
+                "{0}: {1}",
+                String("Scores", Null, Null, Null),
+                String(
+                    "{0} and {1}",
+                    String("Crouch", Null, Null, Null),
+                    String("Interact", Null, Null, Null),
+                    Null
+                ),
+                Null
+            ),
+            Left,
+            0,
+            White,
+            White,
+            White,
+            Visible To and String
+        );
+        Create HUD Text(
+            All Players(All Teams),
+            Null,
+            Null,
+            String(
+                "{0}: {1}",
+                String(
+                    "{0} {1}",
+                    String("Pick", Null, Null, Null),
+                    String("Hero", Null, Null, Null),
+                    Null
+                ),
+                String("Ultimate Ability", Null, Null, Null),
+                Null
+            ),
+            Left,
+            0,
+            White,
+            White,
+            White,
+            Visible To and String
+        );
+    }
+}
+
+rule("Init player vars and gB")
+{
+    event
+    {
+        Ongoing - Each Player;
+        All;
+        All;
+    }
+
+    conditions
+    {
+        Player Variable(Event Player, B) == Null;
+    }
+
+    actions
+    {
+        Set Global Variable(B, Allowed Heroes(Event Player));
+
+        Set Player Variable(Event Player, B, Empty Array);
+        Set Player Variable(Event Player, C, Null);
+        Set Player Variable(Event Player, D, 0);
+        Set Player Variable(Event Player, E, 0);
+        Set Player Variable(Event Player, F, Empty Array);
+            Modify Player Variable(Event Player, F, Append To Array, Null);
+            Modify Player Variable(Event Player, F, Append To Array, 0);
+            Modify Player Variable(Event Player, F, Append To Array, Null);
+        Set Player Variable(Event Player, H, Vector(0, 0, 0));
+        Set Player Variable(Event Player, I, 0);
+        Set Player Variable(Event Player, J, Empty Array);
+            Modify Player Variable(Event Player, J, Append To Array, False);
+            Modify Player Variable(Event Player, J, Append To Array, 0);
+            Modify Player Variable(Event Player, J, Append To Array, False);
+        Set Player Variable(Event Player, K, Empty Array);
+            Modify Player Variable(Event Player, K, Append To Array, 0);
+            Modify Player Variable(Event Player, K, Append To Array, Vector(0, 0, 0));
+            Modify Player Variable(Event Player, K, Append To Array, Vector(0, 0, 0));
+            Modify Player Variable(Event Player, K, Append To Array, Vector(0, 0, 0));
+        Set Player Variable(Event Player, M, 0);
+        Set Player Variable(Event Player, P, Empty Array);
+    }
+}
+
+rule("Update pF")
+{
+    event
+    {
+        Ongoing - Each Player;
+        All;
+        All;
+    }
+
+    conditions
+    {
+        Or(
+            // There is an opponent but pF[0] suggests there isn't.
+            And(
+                Compare(Remove From Array(All Players(All Teams), Event Player), !=, Empty Array),
+                Not(Entity Exists(Value In Array(Player Variable(Event Player, F), 0)))
+            ),
+            // There is an opponent but at least one of pF[1] and pF[2] is inaccurate.
+            And(
+                Entity Exists(Value In Array(Player Variable(Event Player, F), 0)),
+                Or(
+                    Compare(
+                        Value In Array(Player Variable(Event Player, F), 1),
+                        !=,
+                        Score Of(Value In Array(Player Variable(Event Player, F), 0))
+                    ),
+                    Compare(
+                        Value In Array(Player Variable(Event Player, F), 2),
+                        !=,
+                        Hero Of(Value In Array(Player Variable(Event Player, F), 0))
+                    )
+                )
+            )
+        ) == True;
+    }
+
+    actions
+    {
+        Set Player Variable At Index(
+            Event Player,
+            F,
+            0,
+            Filtered Array(All Players(All Teams), Compare(Current Array Element, !=, Event Player))
+        );
+        Set Player Variable At Index(Event Player, F, 1, Score Of(Value In Array(Player Variable(Event Player, F), 0)));
+        Set Player Variable At Index(Event Player, F, 2, Hero Of(Value In Array(Player Variable(Event Player, F), 0)));
+    }
+}
+
+rule("Skip assembly")
+{
+    event
+    {
+        Ongoing - Global;
+    }
+
+    conditions
+    {
+        Is Assembling Heroes == True;
+    }
+
+    actions
+    {
+        Set Match Time(0);
+    }
+}
+
+rule("Apply game settings")
+{
+    event
+    {
+        Ongoing - Global;
+    }
+
+    conditions
+    {
+        Is Game In Progress == True;
+    }
+
+    actions
+    {
+        Disable Built-In Game Mode Completion;
+        Disable Built-In Game Mode Scoring;
+        Set Match Time(0);
+    }
+}
+
+
+
+// Core _______________________________________________________________________
+
+disabled rule("Core") {event {Ongoing - Global;}}
+
+rule("Scoring")
+{
+    event
+    {
+        Player Died;
+        All;
+        All;
+    }
+    
+    conditions
+    {
+        Entity Exists(Value In Array(Player Variable(Event Player, F), 0)) == True;
+    }
+
+    actions
+    {
+        Skip If(Compare(Victim, ==, Attacker), 1);
+        Modify Player Score(Attacker, 1);
+        Skip If(Compare(Victim, !=, Attacker), 1);
+        Modify Player Score(Victim, -1);
+    }
+}
+
+// Display the remaining health of the opponent after being eliminated.
+rule("Health check")
+{
+    event
+    {
+        Player Died;
+        All;
+        All;
+    }
+
+    conditions
+    {
+        Entity Exists(Value In Array(Player Variable(Event Player, F), 0)) == True;
+    }
+
+    actions
+    {
+        Small Message(
+            Event Player,
+            String(
+                "{0} {1} {2}",
+                Health(Value In Array(Player Variable(Event Player, F), 0)),
+                String("Remaining", Null, Null, Null),
+                String(
+                    "({0})",
+                    String(
+                        "{0}%",
+                        Multiply(Normalized Health(Value In Array(Player Variable(Event Player, F), 0)), 100),
+                        Null,
+                        Null
+                    ),
+                    Null,
+                    Null
+                )
+            )
+        );
+    }
+}
+
+rule("Instant respawn")
+{
+    event
+    {
+        Player Died;
+        All;
+        All;
+    }
+
+    actions
+    {
+        Respawn(Event Player);
+    }
+}
+
+// Respawns the player in a random position nearby their opponent.
+// Pt1: handles exit cases, store the opponent's position and triggers refresh
+// for the opponent.
+rule("Smart respawn pt1")
+{
+    event
+    {
+        Ongoing - Each Player;
+        All;
+        All;
+    }
+
+    conditions
+    {
+        Has Spawned(Event Player) == True;
+        Is Alive(Event Player) == True;
+    }
+
+    actions
+    {
+        Abort If(Not(Entity Exists(Value In Array(Player Variable(Event Player, F), 0))));
+        Abort If(Not(Has Spawned(Value In Array(Player Variable(Event Player, F), 0))));
+        Abort If(Not(Is Alive(Value In Array(Player Variable(Event Player, F), 0))));
+
+        Set Player Variable(Event Player, H, Position Of(Value In Array(Player Variable(Event Player, F), 0)));
+        Set Player Variable(Value In Array(Player Variable(Event Player, F), 0), M, 999);
+        Set Player Variable(Event Player, E, 1);
+    }
+}
+
+// Pt2: generates an appropriate spawn and then prepares a call to
+// teleport module.
+rule("Smart respawn pt2")
+{
+    event
+    {
+        Ongoing - Each Player;
+        All;
+        All;
+    }
+
+    conditions
+    {
+        Player Variable(Event Player, E) == 1;
+    }
+
+    actions
+    {
+        // Loop: generate spawn.
+            Set Player Variable(
+                Event Player,
+                E,
+                Nearest Walkable Position(
+                    Add(
+                        Player Variable(Event Player, H),
+                        Multiply(
+                            Random Integer(25, 35),
+                            Normalize(Vector(Random Real(-1, 1), Random Real(-1, 1), Random Real(-1, 1)))
+                        )
+                    )
+                )
+            );
+            Wait(0.016, Restart When True);
+        Loop If(
+            Or(
+                Compare(Distance Between(Player Variable(Event Player, H), Player Variable(Event Player, E)), <, 25),
+                Compare(Distance Between(Player Variable(Event Player, H), Player Variable(Event Player, E)), >, 35)
+            )
+        );
+
+        Set Player Variable At Index(Event Player, K, 1, Player Variable(Event Player, E));
+        Set Player Variable At Index(Event Player, K, 2, 999);
+        Set Player Variable At Index(Event Player, K, 3, 999);
+        Set Player Variable(Event Player, E, 2);
+    }
+}
+
+// Pt3: activates teleport module as soon as it's free.
+rule("Smart respawn pt3")
+{
+    event
+    {
+        Ongoing - Each Player;
+        All;
+        All;
+    }
+
+    conditions
+    {
+        Player Variable(Event Player, E) == 2;
+        Value In Array(Player Variable(Event Player, K), 0) == 0;
+    }
+
+    actions
+    {
+        Set Player Variable At Index(Event Player, K, 0, 999);
+        Set Player Variable(Event Player, E, 0);
+    }
+}
+
+// Respawns the player in place in order to reset cooldowns, cleanse, etc.
+// Pt1: handles exit cases. 
+rule("Refresh pt1")
+{
+    event
+    {
+        Ongoing - Each Player;
+        All;
+        All;
+    }
+
+    conditions
+    {
+        Player Variable(Event Player, M) == 999;
+    }
+
+    actions
+    {
+        Skip If(And(Has Spawned(Event Player), Is Alive(Event Player)), 2);
+            Set Player Variable(Event Player, M, 0);
+            Abort;
+        Set Player Variable(Event Player, M, 1);
+    }
+}
+
+// Pt2: respawns the player and activates teleport module as soon as it's free.
+rule("Refresh pt2")
+{
+    event
+    {
+        Ongoing - Each Player;
+        All;
+        All;
+    }
+
+    conditions
+    {
+        Player Variable(Event Player, M) == 1;
+        Value In Array(Player Variable(Event Player, K), 0) == 0;
+    }
+
+    actions
+    {
+        Set Player Variable At Index(Event Player, K, 1, Position Of(Event Player));
+        Set Player Variable At Index(Event Player, K, 2, Facing Direction Of(Event Player));
+        Set Player Variable At Index(Event Player, K, 3, Velocity Of(Event Player));
+        Respawn(Event Player);
+        Set Player Variable At Index(Event Player, K, 0, 999);
+
+        Set Player Variable(Event Player, M, 0);
+    }
+}
+
+// Gives spawn protections.
+rule("Respite")
+{
+    event
+    {
+        Ongoing - Each Player;
+        All;
+        All;
+    }
+
+    conditions
+    {
+        Has Spawned(Event Player) == True;
+        Is Alive(Event Player) == True;
+    }
+
+    actions
+    {
+        Abort If(Has Status(Event Player, Invincible));
+
+        Set Status(Event Player, Null, Invincible, 2);
+        Set Status(Value In Array(Player Variable(Event Player, F), 0), Null, Invincible, 2);
+
+        Start Heal Over Time(All Players(All Teams), Null, 2, 999);
+
+        Create Effect(Value In Array(Player Variable(Event Player, F), 0), Good Aura, Yellow, Event Player, 0.500, Visible To Position and Radius);
+        Create Effect(Event Player, Good Aura, Yellow, Value In Array(Player Variable(Event Player, F), 0), 0.500, Visible To Position and Radius);
+
+        Wait(2, Ignore Condition);
+        Destroy All Effects;
+    }
+}
+
+rule("Hero select")
+{
+    event
+    {
+        Ongoing - Each Player;
+        All;
+        All;
+    }
+
+    conditions
+    {
+        Is Button Held(Event Player, Ultimate) == True;
+        Is Alive(Event Player) == True;
+    }
+
+    actions
+    {
+        Skip If(
+            Or(
+                Compare(Normalized Health(Event Player), ==, 1),
+                Not(Entity Exists(Value In Array(Player Variable(Event Player, F), 0)))
+            ),
+            1
+        );
+        Modify Player Score(Event Player, -1);
+
+        // Taken from Beemoo's aim arena.
+	    Set Player Allowed Heroes(Event Player, Remove From Array(Global Variable(B), Hero Of(Event Player)));
+		Wait(0.25, Ignore Condition);
+		Set Player Allowed Heroes(Event Player, Global Variable(B));
+    }
+}
+
+rule("Hero change message")
+{
+    event
+    {
+        Ongoing - Each Player;
+        All;
+        All;
+    }
+
+    conditions
+    {
+        Compare(Hero Of(Event Player), ==, Player Variable(Event Player, C)) == False;
+        Hero Of(Event Player) == True;
+    }
+
+    actions
+    {
+        Set Player Variable(Event Player, C, Hero Of(Event Player));
+
+        Big Message(
+            Value In Array(Player Variable(Event Player, F), 0),
+            String(
+                "{0} {1} {2}",
+                Event Player,
+                String("Picked", Null, Null, Null),
+                Player Variable(Event Player, C)
+            )
+        );
+    }
+}
+
+rule("Player join sound")
+{
+    event
+    {
+        Ongoing - Each Player;
+        All;
+        All;
+    }
+
+    conditions
+    {
+	    Number of Players(All Teams) == 2;
+    }
+
+    actions
+    {
+        Play Effect(Event Player, Ring Explosion Sound, White, Event Player, 100);
+        Play Effect(Event Player, Ring Explosion Sound, White, Event Player, 50);
+    }
+}
+
+
+
+// Bookkeeping ________________________________________________________________
+
+disabled rule("Bookkeeping") {event {Ongoing - Global;}}
+
+// Catches a round end condition and correspondingly forks execution for
+// round reset.
+rule("Round evaluation")
+{
+    event
+    {
+        Ongoing - Each Player;
+        All;
+        All;
+    }
+
+    conditions
+    {
+        Is Game In Progress == True;
+        Or(
+            Compare(Score Of(Event Player), >=, Global Variable(A)),
+            And(
+                Not(Entity Exists(Value In Array(Player Variable(Event Player, F), 0))),
+                Or(
+                    Compare(Score Of(Event Player), !=, 0),
+                    Compare(Value In Array(Player Variable(Event Player, F), 1), !=, 0)
+                )
+            )
+        ) == True;
+    }
+
+    actions
+    {
+        Skip If(Entity Exists(Value In Array(Player Variable(Event Player, F), 0)), 2);
+            Set Player Variable(Event Player, D, 3);
+            Abort;
+        Set Player Variable(Event Player, D, 2);
+        Set Player Variable(Value In Array(Player Variable(Event Player, F), 0), D, 1);
+    }
+}
+
+// Records the round, prints its results and starts the next round.
+rule("Round reset")
+{
+    event
+    {
+        Ongoing - Each Player;
+        All;
+        All;
+    }
+
+    conditions
+    {
+        Player Variable(Event Player, D) != 0;
+    }
+    
+    actions
+    {
+        Set Player Variable(Event Player, P, Empty Array);
+            Modify Player Variable(Event Player, P, Append to Array, Player Variable(Event Player, D));
+            Modify Player Variable(Event Player, P, Append to Array, Hero Of(Event Player));
+            Modify Player Variable(Event Player, P, Append to Array, Value In Array(Player Variable(Event Player, F), 2));
+            Modify Player Variable(Event Player, P, Append to Array, Score Of(Event Player));
+            Modify Player Variable(Event Player, P, Append to Array, Value In Array(Player Variable(Event Player, F), 1));
+            Set Player Variable At Index(Event Player, B, Count Of(Player Variable(Event Player, B)), Player Variable(Event Player, P));
+        
+        Skip If(Compare(Player Variable(Event Player, D), !=, 3), 1);
+        Big Message(
+            Event Player,
+            String(
+                "{0} {1}",
+                String("Enemy", Null, Null, Null),
+                String("Disconnected", Null, Null, Null),
+                Null
+            )
+        );
+        Skip If(Compare(Player Variable(Event Player, D), ==, 3), 1);
+        Big Message(
+            Event Player,
+            String(
+                "{0}:{1}",
+                Value In Array(
+                    Value In Array(Player Variable(Event Player, B), Subtract(Count Of(Player Variable(Event Player, B)), 1)),
+                    3
+                ),
+                Value In Array(
+                    Value In Array(Player Variable(Event Player, B), Subtract(Count Of(Player Variable(Event Player, B)), 1)),
+                    4
+                ),
+                Null
+            )
+        );
+        
+        Set Player Variable At Index(Event Player, J, 1, Subtract(Count Of(Player Variable(Event Player, B)), 1));
+        Set Player Variable At Index(Event Player, J, 2, True);
+        Set Player Variable At Index(Event Player, J, 0, True);
+
+        // Wait for the opponent's round reset before resetting score.
+        Wait(0.1, Ignore Condition);
+
+        Set Player Score(Event Player, 0);
+        Set Player Variable(Event Player, D, 0);
+
+        // Ensure the upcoming hero swap, triggered by pressing ult, doesn't
+        // deduct a point.
+        Set Status(Event Player, Null, Invincible, 999);
+        Heal(Event Player, Null, 999);
+
+	    Start Camera(
+            Event Player,
+            Add(Eye Position(Event Player), Vector(0, 150, 0)),
+            Add(Eye Position(Event Player), Vector(X Component Of(Facing Direction Of(Event Player)), 150, 0)),
+            0.010
+        );
+        Wait(3, Ignore Condition);
+        Stop Camera(Event Player);
+
+        Press Button(Event Player, Ultimate);
+        Clear Status(Event Player, Invincible);
+    }
+}
+
+rule("Print round history")
+{
+    event
+    {
+        Ongoing - Each Player;
+        All;
+        All;
+    }
+
+    conditions
+    {
+        Is Button Held(Event Player, Crouch) == True;
+        Is Button Held(Event Player, Interact) == True;
+        Player Variable(Event Player, I) == 0;
+        Count Of(Player Variable(Event Player, B)) >= 1;
+    }
+
+    actions
+    {
+        // Loop: cycle through pB.
+            Set Player Variable At Index(Event Player, J, 1, Player Variable(Event Player, I));
+            Set Player Variable At Index(Event Player, J, 2, Compare(Player Variable(Event Player, I), !=, 0));
+            Set Player Variable At Index(Event Player, J, 0, True);
+
+            Modify Player Variable(Event Player, I, Add, 1);
+
+            // Wait for print round module.
+            Wait(0.1, Ignore Condition);
+        Loop If(Compare(Player Variable(Event Player, I), <, Count Of(Player Variable(Event Player, B))));
+        
+        // Cooldown on rule.
+        Wait(3, Ignore Condition);
+        Set Player Variable(Event Player, I, 0);
+    }
+}
+
+
+
+// Modules ____________________________________________________________________
+
+disabled rule("Modules") {event {Ongoing - Global;}}
+
+rule("Print round module")
+{
+    event
+    {
+        Ongoing - Each Player;
+        All;
+        All;
+    }
+
+    conditions
+    {
+        Value In Array(Player Variable(Event Player, J), 0) == True;
+    }
+
+    actions
+    {
+        Skip If(Not(Value In Array(Player Variable(Event Player, J), 2)), 1);
+            Small Message(Event Player, Empty Array);
+        Small Message(
+            Event Player,
+            String(
+                "{0}:{1}",
+                String(
+                    "{0} {1}",
+                    Hero Icon String(
+                        Value In Array(
+                            Value In Array(Player Variable(Event Player, B), Value In Array(Player Variable(Event Player, J), 1)),
+                            1
+                        )
+                    ),
+                    Value In Array(
+                        Value In Array(Player Variable(Event Player, B), Value In Array(Player Variable(Event Player, J), 1)),
+                        3
+                    ),
+                    Null
+                ),
+                String(
+                    "{0} {1}",
+                    Value In Array(
+                        Value In Array(Player Variable(Event Player, B), Value In Array(Player Variable(Event Player, J), 1)),
+                        4
+                    ),
+                    Hero Icon String(
+                        Value In Array(
+                            Value In Array(Player Variable(Event Player, B), Value In Array(Player Variable(Event Player, J), 1)),
+                            2
+                        )
+                    ),
+                    Null
+                ),
+                Null
+            )
+        );
+        
+        Set Player Variable At Index(Event Player, J, 0, False);
+    }
+}
+
+// This rule sequence is needed because teleporting and set facing have
+// strange delays/requirements that must be waited for.
+// Pt1: cancels motion.
+rule("Teleport module pt1")
+{
+    event
+    {
+        Ongoing - Each Player;
+        All;
+        All;
+    }
+
+    conditions
+    {
+        Value In Array(Player Variable(Event Player, K), 0) == 999;
+    }
+
+    actions
+    {
+        Apply Impulse(
+            Event Player, Multiply(-1.000, Velocity Of(Event Player)), Square Root(Dot Product(Velocity Of(Event Player), Velocity Of(Event Player))), To World, Incorporate Contrary Motion
+        );
+        Set Gravity(Event Player, Absolute Value(0));
+        Set Move Speed(Event Player, Absolute Value(0));
+
+        Set Player Variable At Index(Event Player, K, 0, 1);
+    }
+}
+
+// Pt2: ensures teleportation works.
+rule("Teleport module pt2")
+{
+    event
+    {
+        Ongoing - Each Player;
+        All;
+        All;
+    }
+
+    conditions
+    {
+        // Executes once the player is not at their teleport position. If the
+        // teleport destination is at the player's position before the module
+        // call, this is equivalent to waiting for the respawn to trigger.
+        Value In Array(Player Variable(Event Player, K), 0) == 1;
+        Compare(Distance Between(Position Of(Event Player), Value In Array(Player Variable(Event Player, K), 1)), >, 1) == True;
+    }
+
+    actions
+    {
+        // Loop: teleport until it works, i.e. until the player is roughly at
+        // the teleport position. This will ensure the teleport works in cases
+        // where the destination is not at the player's position.
+            Teleport(Event Player, Value In Array(Player Variable(Event Player, K), 1));
+            Wait(0.016, Ignore Condition);
+        Loop If Condition Is True;
+
+        // Fork execution based on whether or not pK[2] is specified.
+        Skip If(Compare(Value In Array(Player Variable(Event Player, K), 2), !=, 999), 2);
+            Set Player Variable At Index(Event Player, K, 0, 3);
+            Abort();
+        Set Player Variable At Index(Event Player, K, 0, 2);
+    }
+}
+
+// Pt3: ensures set facing works, applies the exit velocity and restores
+// motion.
+rule("Teleport module pt3")
+{
+    event
+    {
+        Ongoing - Each Player;
+        All;
+        All;
+    }
+
+    conditions
+    {
+        Or(
+            Compare(Value In Array(Player Variable(Event Player, K), 0), ==, 2),
+            Compare(Value In Array(Player Variable(Event Player, K), 0), ==, 3)
+        ) == True;
+    }
+
+    actions
+    {
+        // Loop: set facing direction until it works, i.e. until the player
+        // is roughly facing in the set direction.
+            // If pK[2] was unspecified, constantly update it to the vector
+            // from the player to their opponent.
+            Skip If(Compare(Value In Array(Player Variable(Event Player, K), 0), !=, 3), 1);
+                Set Player Variable At Index(
+                    Event Player, K, 2, Subtract(Position Of(Value In Array(Player Variable(Event Player, F), 0)), Position Of(Event Player))
+                );
+            Set Facing(Event Player, Value In Array(Player Variable(Event Player, K), 2), To World);
+            Wait(0.016, Ignore Condition);
+        Loop If(Compare(Absolute Value(Subtract(1, Dot Product(Facing Direction Of(Event Player), Normalize(Value In Array(Player Variable(Event Player, K), 2))))), >, 0.050));
+
+        // If the exit velocity is unspecified, set it to a small force
+        // in the direction of the opponent.
+        Skip If(Compare(Value In Array(Player Variable(Event Player, K), 3), !=, 999), 1);
+            Set Player Variable At Index(Event Player, K, 3, Multiply(5, Normalize(Value In Array(Player Variable(Event Player, K), 2))));
+        
+        Set Move Speed(Event Player, 100);
+        Set Gravity(Event Player, 100);
+        Apply Impulse(
+            Event Player, Value In Array(Player Variable(Event Player, K), 3), Square Root(Dot Product(Value In Array(Player Variable(Event Player, K), 3), Value In Array(Player Variable(Event Player, K), 3))), To World, Incorporate Contrary Motion
+        );
+        
+        Set Player Variable At Index(Event Player, K, 0, 0);
+    }
+}
+
+
+
+// Testing ____________________________________________________________________
+
+disabled rule("Testing") {event {Ongoing - Global;}}
+
+disabled rule("Testing: display server performance")
+{
+	event
+	{
+		Ongoing - Global;
+	}
+
+	actions
+	{
+		Create HUD Text(
+            All Players(All Teams),
+            String("{0}: {1}", String("Server Load", Null, Null, Null), String("{0}%", Server Load, Null, Null), Null),
+            Null,
+            Null,
+            Left,
+            0,
+            White,
+            White,
+            White,
+            Visible To and String
+        );
+        Create HUD Text(
+            All Players(All Teams),
+            String("{0}: {1}", String("Server Load Average", Null, Null, Null), String("{0}%", Server Load Average, Null, Null), Null),
+            Null,
+            Null,
+            Left,
+            0,
+            White,
+            White,
+            White,
+            Visible To and String
+        );
+        Create HUD Text(
+            All Players(All Teams),
+            String("{0}: {1}", String("Server Load Peak", Null, Null, Null), String("{0}%", Server Load Peak, Null, Null), Null),
+            Null,
+            Null,
+            Left,
+            0,
+            White,
+            White,
+            White,
+            Visible To and String
+        );
+	}
+}
+
+// Ability 1.
+disabled rule("Testing: increment score")
+{
+    event
+    {
+        Ongoing - Each Player;
+        All;
+        All;
+    }
+
+    conditions
+    {
+        Is Button Held(Event Player, Ability 1) == True;
+    }
+
+    actions
+    {
+        Modify Player Score(Event Player, 1);
+    }
+}
+
+// Primary + secondary fire.
+disabled rule("Testing: win round")
+{
+    event
+    {
+        Ongoing - Each Player;
+        All;
+        All;
+    }
+
+    conditions
+    {
+        Is Button Held(Event Player, Primary Fire) == True;
+        Is Button Held(Event Player, Secondary Fire) == True;
+    }
+
+    actions
+    {
+        Set Player Variable(Event Player, D, 2);
+        Set Player Variable(Value In Array(Player Variable(Event Player, F), 0), D, 1);
+    }
+}
+
+// Secondary fire.
+disabled rule("Testing: activate refresh")
+{
+    event
+    {
+        Ongoing - Each Player;
+        All;
+        All;
+    }
+
+    conditions
+    {
+        Is Button Held(Event Player, Secondary Fire) == True;
+        Has Spawned(Event Player) == True;
+        Is Alive(Event Player) == True;
+    }
+
+    actions
+    {
+        Set Player Variable(Event Player, M, 999);
+    }
+}
+
+// Any communication.
+disabled rule("Testing: killbind")
+{
+    event
+    {
+        Ongoing - Each Player;
+        All;
+        All;
+    }
+
+    conditions
+    {
+        Is Communicating Any(Event Player) == True;
+    }
+
+    actions
+    {
+        Kill(Event Player, Null);
+    }
+}
+
+disabled rule("Testing: reveal all players")
+{
+    event
+    {
+        Ongoing - Each Player;
+        All;
+        All;
+    }
+
+    actions
+    {
+        Create Icon(All Players(All Teams), Event Player, Arrow: Down, Visible To and Position, Green, True);
+    }
+}
+
+disabled rule("Testing: show position")
+{
+    event
+    {
+        Ongoing - Each Player;
+        All;
+        All;
+    }
+
+    actions
+    {
+        Create HUD Text(All Players(All Teams), Position Of(Event Player), Null, Null, Left, 0, White, White, White, Visible To and String);
+    }
+}
