@@ -1,0 +1,166 @@
+/*
+gA = Current item being tested.
+gB = Trigger for falses module, which is chained to trues module through gE. This is to avoid the rule length limit.
+gC = Arbitrary non-empty array.
+gD = Trigger for testing trues.
+gE = Trigger for trues module.
+*/
+
+
+
+rule("Init gC")
+{
+    event
+    {
+        Ongoing - Global;
+    }
+
+    actions
+    {
+        Set Global Variable(C, Empty Array);
+        Set Global Variable(C, Append To Array(Global Variable(C), 1));
+        Set Global Variable(C, Append To Array(Global Variable(C), 2));
+        Set Global Variable(C, Append To Array(Global Variable(C), 3));
+    }
+}
+
+rule("Testing falses")
+{
+    event
+    {
+        Ongoing - Global;
+    }
+
+    conditions
+    {
+        Is Alive(Players In Slot(0, All Teams)) == True;
+    }
+
+    actions
+    {
+        Set Global Variable(A, False);
+        Set Global Variable(B, True);
+        Wait(1, Ignore Condition);
+
+        Set Global Variable(A, Empty Array);
+        Set Global Variable(B, True);
+        Wait(1, Ignore Condition);
+
+        Set Global Variable(A, 0);
+        Set Global Variable(B, True);
+        Wait(1, Ignore Condition);
+
+        Set Global Variable(A, Null);
+        Set Global Variable(B, True);
+        Wait(1, Ignore Condition);
+
+        Set Global Variable(A, Vector(0, 0, 0));
+        Set Global Variable(B, True);
+        Wait(1, Ignore Condition);
+
+        Set Global Variable(A, Players In Slot(1, All Teams));
+        Set Global Variable(B, True);
+        Wait(1, Ignore Condition);
+        
+        Set Global Variable(D, True);
+    }
+}
+
+rule("Testing trues")
+{
+    event
+    {
+        Ongoing - Global;
+    }
+
+    conditions
+    {
+        Global Variable(D) == True;
+    }
+
+    actions
+    {
+        Set Global Variable(A, True);
+        Set Global Variable(B, True);
+        Wait(1, Ignore Condition);
+
+        Set Global Variable(A, Global Variable(C));
+        Set Global Variable(B, True);
+        Wait(1, Ignore Condition);
+
+        Set Global Variable(A, 999);
+        Set Global Variable(B, True);
+        Wait(1, Ignore Condition);
+
+        Set Global Variable(A, Vector(1, 2, 3));
+        Set Global Variable(B, True);
+        Wait(1, Ignore Condition);
+
+        Set Global Variable(A, Players In Slot(0, All Teams));
+        Set Global Variable(B, True);
+    }
+}
+
+rule("Falses module")
+{
+    event
+    {
+        Ongoing - Global;
+    }
+
+    conditions
+    {
+        Global Variable(B) == True;
+    }
+
+    actions
+    {
+        Skip If(Compare(Global Variable(A), !=, False), 1);
+            Create HUD Text(All Players(All Teams), String("!", Null, Null, Null), Null, Null, Left, 0, White, White, White, Visible To and String);
+        Skip If(Compare(Global Variable(A), !=, Empty Array), 1);
+            Create HUD Text(All Players(All Teams), String("!", Null, Null, Null), Null, Null, Left, 0, Red, White, White, Visible To and String);
+        Skip If(Compare(Global Variable(A), !=, 0), 1);
+            Create HUD Text(All Players(All Teams), String("!", Null, Null, Null), Null, Null, Left, 0, Green, White, White, Visible To and String);
+        Skip If(Compare(Global Variable(A), !=, Null), 1);
+            Create HUD Text(All Players(All Teams), String("!", Null, Null, Null), Null, Null, Left, 0, Blue, White, White, Visible To and String);
+        Skip If(Compare(Global Variable(A), !=, Vector(0, 0, 0)), 1);
+            Create HUD Text(All Players(All Teams), String("!", Null, Null, Null), Null, Null, Left, 0, Purple, White, White, Visible To and String);
+        Skip If(Compare(Global Variable(A), !=, Players In Slot(1, All Teams)), 1);
+            Create HUD Text(All Players(All Teams), String("!", Null, Null, Null), Null, Null, Left, 0, Yellow, White, White, Visible To and String);
+
+        Set Global Variable(E, True);
+    }
+}
+
+rule("Trues module")
+{
+    event
+    {
+        Ongoing - Global;
+    }
+
+    conditions
+    {
+        Global Variable(E) == True;
+    }
+
+    actions
+    {
+        Skip If(Compare(Global Variable(A), !=, True), 1);
+            Create HUD Text(All Players(All Teams), Null, String("!", Null, Null, Null), Null, Left, 0, White, White, White, Visible To and String);
+        Skip If(Compare(Global Variable(A), !=, Global Variable(C)), 1);
+            Create HUD Text(All Players(All Teams), Null, String("!", Null, Null, Null), Null, Left, 0, White, Red, White, Visible To and String);
+        Skip If(Compare(Global Variable(A), !=, 999), 1);
+            Create HUD Text(All Players(All Teams), Null, String("!", Null, Null, Null), Null, Left, 0, White, Green, White, Visible To and String);
+        Skip If(Compare(Global Variable(A), !=, Vector(1, 2, 3)), 1);
+            Create HUD Text(All Players(All Teams), Null, String("!", Null, Null, Null), Null, Left, 0, White, Purple, White, Visible To and String);
+        Skip If(Compare(Global Variable(A), !=, Players In Slot(0, All Teams)), 1);
+            Create HUD Text(All Players(All Teams), Null, String("!", Null, Null, Null), Null, Left, 0, White, Yellow, White, Visible To and String);
+
+        Set Global Variable(A, Append To Array(Global Variable(A), 1));
+        Create HUD Text(All Players(All Teams), Null, String("----------", Null, Null, Null), Null, Left, 0, White, White, White, Visible To and String);
+
+        Set Global Variable(E, False);
+        Set Global Variable(B, False);
+    }
+}

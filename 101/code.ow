@@ -598,9 +598,9 @@ rule("Hero select")
         Modify Player Score(Event Player, -1);
 
         // Taken from Beemoo's aim arena.
-	    Set Player Allowed Heroes(Event Player, Remove From Array(Global Variable(B), Hero Of(Event Player)));
-		Wait(0.25, Ignore Condition);
-		Set Player Allowed Heroes(Event Player, Global Variable(B));
+        Set Player Allowed Heroes(Event Player, Remove From Array(Global Variable(B), Hero Of(Event Player)));
+        Wait(0.25, Ignore Condition);
+        Set Player Allowed Heroes(Event Player, Global Variable(B));
     }
 }
 
@@ -646,7 +646,7 @@ rule("Player join sound")
 
     conditions
     {
-	    Number of Players(All Teams) == 2;
+        Number of Players(All Teams) == 2;
     }
 
     actions
@@ -765,7 +765,7 @@ rule("Round reset")
         Set Status(Event Player, Null, Invincible, 999);
         Heal(Event Player, Null, 999);
 
-	    Start Camera(
+        Start Camera(
             Event Player,
             Add(Eye Position(Event Player), Vector(0, 150, 0)),
             Add(Eye Position(Event Player), Vector(X Component Of(Facing Direction Of(Event Player)), 150, 0)),
@@ -1000,14 +1000,14 @@ disabled rule("Testing") {event {Ongoing - Global;}}
 
 disabled rule("Testing: display server performance")
 {
-	event
-	{
-		Ongoing - Global;
-	}
+    event
+    {
+        Ongoing - Global;
+    }
 
-	actions
-	{
-		Create HUD Text(
+    actions
+    {
+        Create HUD Text(
             All Players(All Teams),
             String("{0}: {1}", String("Server Load", Null, Null, Null), String("{0}%", Server Load, Null, Null), Null),
             Null,
@@ -1043,7 +1043,7 @@ disabled rule("Testing: display server performance")
             White,
             Visible To and String
         );
-	}
+    }
 }
 
 // Ability 1.

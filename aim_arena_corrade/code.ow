@@ -438,55 +438,55 @@ rule("Hero select")
         Modify Player Score(Event Player, -1);
 
         // Taken from the original aim arena (Beemoo).
-	    Set Player Allowed Heroes(Event Player, Remove From Array(Global Variable(B), Hero Of(Event Player)));
-		Wait(0.25, Ignore Condition);
-		Set Player Allowed Heroes(Event Player, Global Variable(B));
+        Set Player Allowed Heroes(Event Player, Remove From Array(Global Variable(B), Hero Of(Event Player)));
+        Wait(0.25, Ignore Condition);
+        Set Player Allowed Heroes(Event Player, Global Variable(B));
     }
 }
 
 rule("Count damage")
 {
-	event
-	{
-		Player Dealt Damage;
-		All;
-		All;
-	}
+    event
+    {
+        Player Dealt Damage;
+        All;
+        All;
+    }
     
     conditions
     {
         Is Game In Progress == True;
     }
 
-	actions
-	{
+    actions
+    {
         Abort If(Compare(Victim, ==, Event Player));
-		Modify Player Variable(Event Player, D, Add, Event Damage);
-	}
+        Modify Player Variable(Event Player, D, Add, Event Damage);
+    }
 }
 
 // Counts the number of seconds that the player has spent in-game.
 rule("Count seconds")
 {
-	event
-	{
-		Ongoing - Each Player;
-		All;
-		All;
-	}
+    event
+    {
+        Ongoing - Each Player;
+        All;
+        All;
+    }
 
     conditions
     {
         Is Game In Progress == True;
     }
 
-	actions
-	{
+    actions
+    {
         // Loop: count seconds.
             Modify Player Variable(Event Player, B, Add, 1);
             Wait(1, Ignore Condition);
-		Loop;
-	}
+        Loop;
+    }
 }
 
 // Resets the time and damage counts of a player on hero change.
@@ -526,7 +526,7 @@ rule("Refresh DPS UI")
         // Loop: refresh interval. Uses a fancy progress bar - only gF should
         // be changed.
             Set Global Variable(E, 7.49);
-	        Chase Global Variable Over Time(E, -0.5, Global Variable(F), None);
+            Chase Global Variable Over Time(E, -0.5, Global Variable(F), None);
             Wait(Subtract(Global Variable(F), 0.1), Ignore Condition);
             
             Destroy All HUD Text;
@@ -550,7 +550,7 @@ rule("Refresh DPS UI")
 
             Set Global Variable(E, -0.5);
             Wait(0.016, Ignore Condition);
-		Loop;
+        Loop;
     }
 }
 
@@ -570,7 +570,7 @@ rule("Generate DPS UI")
 
     actions
     {
-	    Create HUD Text(
+        Create HUD Text(
             All Players(All Teams),
             Null,
             Null,
@@ -579,7 +579,7 @@ rule("Generate DPS UI")
                 String(
                     "{0} {1}",
                     Hero Icon String(Hero Of(Event Player)),
-		            Event Player,
+                    Event Player,
                     Null
                 ),
                 Divide(Player Variable(Event Player, D), Player Variable(Event Player, B)),
@@ -720,14 +720,14 @@ disabled rule("Testing") {event {Ongoing - Global;}}
 
 disabled rule("Testing: display server performance")
 {
-	event
-	{
-		Ongoing - Global;
-	}
+    event
+    {
+        Ongoing - Global;
+    }
 
-	actions
-	{
-		Create HUD Text(
+    actions
+    {
+        Create HUD Text(
             All Players(All Teams),
             String("{0}: {1}", String("Server Load", Null, Null, Null), String("{0}%", Server Load, Null, Null), Null),
             Null,
@@ -763,7 +763,7 @@ disabled rule("Testing: display server performance")
             White,
             Visible To and String
         );
-	}
+    }
 }
 
 // Ability 1.
@@ -887,44 +887,44 @@ disabled rule("Testing: show position")
 // Ability 1.
 disabled rule("Testing: toggle gravity")
 {
-	event
-	{
-		Ongoing - Each Player;
-		All;
-		All;
-	}
+    event
+    {
+        Ongoing - Each Player;
+        All;
+        All;
+    }
 
-	conditions
-	{
-		Is Button Held(Event Player, Ability 1) == True;
-	}
+    conditions
+    {
+        Is Button Held(Event Player, Ability 1) == True;
+    }
 
-	actions
-	{
-		Set Gravity(Event Player, Global Variable(Z));
-		Set Global Variable(Z, Subtract(100, Global Variable(Z)));
-	}
+    actions
+    {
+        Set Gravity(Event Player, Global Variable(Z));
+        Set Global Variable(Z, Subtract(100, Global Variable(Z)));
+    }
 }
 
 // Primary fire.
 disabled rule("Testing: teleport forwards")
 {
-	event
-	{
-		Ongoing - Each Player;
-		All;
-		All;
-	}
+    event
+    {
+        Ongoing - Each Player;
+        All;
+        All;
+    }
 
-	conditions
-	{
-		Is Button Held(Event Player, Primary Fire) == True;
-	}
+    conditions
+    {
+        Is Button Held(Event Player, Primary Fire) == True;
+    }
 
-	actions
-	{
-		Teleport(Event Player, Add(Position Of(Event Player), Multiply(Facing Direction Of(Event Player), 15)));
-		Wait(0.1, Ignore Condition);
-		Loop If Condition Is True;
-	}
+    actions
+    {
+        Teleport(Event Player, Add(Position Of(Event Player), Multiply(Facing Direction Of(Event Player), 15)));
+        Wait(0.1, Ignore Condition);
+        Loop If Condition Is True;
+    }
 }
