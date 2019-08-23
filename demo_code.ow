@@ -1,0 +1,109 @@
+rule("Main") {
+    event {
+        Ongoing - Each Player;
+        All;
+        All;
+    }
+
+    actions {
+        Set Player Variable(Event Player, A, 999);
+        Set Player Variable(Event Player, R, 1);
+
+        Create HUD Text(
+            All Players(All Teams),
+            And(
+                And(
+                    Compare(
+                        Distance Between(
+                            Vector(0,0,0),
+                            Subtract(
+                                Player Variable(Event Player, C),
+                                Add(
+                                    Eye Position(Event Player),
+                                    Multiply(
+                                        Absolute Value(
+                                            Dot Product(
+                                                Subtract(
+                                                    Player Variable(Event Player, C),
+                                                    Eye Position(Event Player)
+                                                ),
+                                                Facing Direction Of(Event Player)
+                                            )
+                                        ),
+                                        Facing Direction Of(Event Player)
+                                    )
+                                )
+                            )
+                        ),
+                        <=,
+                        Player Variable(Event Player, R)
+                    ),
+                    Compare(
+                        Is In Line of Sight(
+                            Add(
+                                Eye Position(Event Player),
+                                Multiply(
+                                    Absolute Value(
+                                        Dot Product(
+                                            Subtract(
+                                                Player Variable(Event Player, C),
+                                                Eye Position(Event Player)
+                                            ),
+                                            Facing Direction Of(Event Player)
+                                        )
+                                    ),
+                                    Facing Direction Of(Event Player)
+                                )
+                            ),
+                            Eye Position(Event Player),
+                            Enemy Barriers Block LOS
+                        ),
+                        ==,
+                        True
+                    )
+                ),
+                Compare(
+                    Distance Between(
+                        Add(
+                            Eye Position(Event Player),
+                            Multiply(
+                                Absolute Value(
+                                    Dot Product(
+                                        Subtract(
+                                            Player Variable(Event Player, C),
+                                            Eye Position(Event Player)
+                                        ),
+                                        Facing Direction Of(Event Player)
+                                    )
+                                ),
+                                Facing Direction Of(Event Player)
+                            )
+                        ),
+                        Eye Position(Event Player)
+                    ),
+                    <=,
+                    Player Variable(Event Player, A)
+                )
+            ),
+            Null, Null, Top, 999, White, White, White, Visible To and String
+        );
+
+        Create Effect(All Players(All Teams), Sphere, Blue, Player Variable(Event Player, C), Divide(Player Variable(Event Player, R), 0.98472), Visible To Position and Radius);
+    }
+}
+
+rule("Update C") {
+    event {
+        Ongoing - Each Player;
+        All;
+        All;
+    }
+
+    conditions {
+        Is Button Held(Event Player, Ability 1) == True;
+    }
+
+    actions {
+        Set Player Variable(Event Player, C, Position Of(Event Player));
+    }
+}
