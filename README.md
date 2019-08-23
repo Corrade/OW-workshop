@@ -1,1 +1,0 @@
-Please refer to the [EloHell workshop page](https://workshop.elohell.gg/uVYxfgMIq).
