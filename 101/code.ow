@@ -1,7 +1,7 @@
 /*
 Description ___________________________________________________________________
 
-101: Streamlined 1v1. This mode sheds the slowness and clunkiness of default 1v1 without distorting the balance or mechanics of regular Overwatch. Based on Lange's TF2 mod, MGE.    [v1.4 by Corrade: more info @ workshop.elohell.gg/uVYxfgMIq]
+101: Streamlined 1v1. This mode sheds the clunkiness of default 1v1 without distorting the balance or mechanics of regular Overwatch. Based on Lange's TF2 mod, MGE.    [v1.4 by Corrade: more info @ workshop.elohell.gg]
 
 
 
@@ -899,7 +899,11 @@ rule("Teleport module pt1")
     actions
     {
         Apply Impulse(
-            Event Player, Multiply(-1.000, Velocity Of(Event Player)), Square Root(Dot Product(Velocity Of(Event Player), Velocity Of(Event Player))), To World, Incorporate Contrary Motion
+            Event Player,
+            Multiply(-1.000, Velocity Of(Event Player)),
+            Square Root(Dot Product(Velocity Of(Event Player), Velocity Of(Event Player))),
+            To World,
+            Incorporate Contrary Motion
         );
         Set Gravity(Event Player, Absolute Value(0));
         Set Move Speed(Event Player, Absolute Value(0));
@@ -971,9 +975,19 @@ rule("Teleport module pt3")
             // from the player to their opponent.
             Skip If(Compare(Value In Array(Player Variable(Event Player, K), 0), !=, 3), 1);
                 Set Player Variable At Index(
-                    Event Player, K, 2, Subtract(Position Of(Value In Array(Player Variable(Event Player, F), 0)), Position Of(Event Player))
+                    Event Player,
+                    K,
+                    2,
+                    Vector Towards(
+                        Position Of(Event Player),
+                        Position Of(Value In Array(Player Variable(Event Player, F), 0))
+                    )
                 );
-            Set Facing(Event Player, Value In Array(Player Variable(Event Player, K), 2), To World);
+            Set Facing(
+                Event Player,
+                Value In Array(Player Variable(Event Player, K), 2),
+                To World
+            );
             Wait(0.016, Ignore Condition);
         Loop If(Compare(Absolute Value(Subtract(1, Dot Product(Facing Direction Of(Event Player), Normalize(Value In Array(Player Variable(Event Player, K), 2))))), >, 0.050));
 
@@ -985,7 +999,11 @@ rule("Teleport module pt3")
         Set Move Speed(Event Player, 100);
         Set Gravity(Event Player, 100);
         Apply Impulse(
-            Event Player, Value In Array(Player Variable(Event Player, K), 3), Square Root(Dot Product(Value In Array(Player Variable(Event Player, K), 3), Value In Array(Player Variable(Event Player, K), 3))), To World, Incorporate Contrary Motion
+            Event Player,
+            Value In Array(Player Variable(Event Player, K), 3),
+            Square Root(Dot Product(Value In Array(Player Variable(Event Player, K), 3), Value In Array(Player Variable(Event Player, K), 3))),
+            To World,
+            Incorporate Contrary Motion
         );
         
         Set Player Variable At Index(Event Player, K, 0, 0);

@@ -15,6 +15,8 @@ Maps
         - Hanamura
 
 Heroes
+    - General
+        - Ultimate Generation: 10%
     - Disabled
         - Bastion
         - Brigitte
@@ -26,8 +28,6 @@ Heroes
         - Winston
         - Wrecking Ball
         - Zarya
-    - General
-        - Ultimate Ability: Off
     - Baptiste
         - Immortality Field: Off
     - Symmetra
@@ -41,24 +41,29 @@ Variables _____________________________________________________________________
 
 gA = Time limit.
 gB = Allowed heroes.
-gC = Space of the arena as described by a parallelogram.
+gC = Arena dimensions based on a parallelogram. The Y components of A, B and D are irrelevant.
           A   B
         D   C
-    The Y components of A, B and D are irrelevant.
-    [0] = A vector.
-    [1] = B vector.
-    [2] = D vector.
-    [3] = Ceiling height.
-    [4] = Floor height.
+    [0] = Vector A.
+    [1] = Vector B.
+    [2] = Vector D.
+    [3] = Approx. ceiling height.
+    [4] = Approx. floor height.
     [5] = Point for respawning players to be set facing towards.
 gD = Array of vectors: spawns must be in LOS of at least one of these points.
-gE = Toggle for refreshing the DPS rank UI.
-gF = Interval for refreshing the DPS rank UI.
+gE = Damage rank damage sample size in seconds. Up to the last gE seconds of damage will be tracked.
+gF = Time until reveal in seconds.
 
+pA = Damage UI reference.
 pB = Number of seconds spent in-game.
-pC = Most recent hero of player.
-pD = Total damage of player on their current hero.
+pC = Damage rank (0..12 at most).
+pD = Damage dealt over the last second.
 pE = Proposed spawn for smart respawn. Resting value = 0. Also a checkpoint in smart respawn.
+pF = Array storing the damage dealt over the last gE seconds in second-long chunks.
+pG = Damage dealt over the last gE seconds.
+pH = Reveal UI references.
+    [0] = Global icon.
+    [1] = Local effect.
 pK = Parameter list for teleport module. If an argument is 999, the module applies special values.
     [0] = Trigger = 999. Resting value = 0. Also a checkpoint in teleport module.
     [1] = Teleport destination.
@@ -74,7 +79,7 @@ pN = Whether or not the player variables have finished initialising.
 
 disabled rule("Housekeeping") {event {Ongoing - Global;}}
 
-rule("[Change me!] Set time limit (seconds)")
+rule("[Change me!] Set time limit (seconds) and time until reveal (seconds)")
 {
     event
     {
@@ -83,45 +88,8 @@ rule("[Change me!] Set time limit (seconds)")
 
     actions
     {
-        Set Global Variable(A, 1800);
-    }
-}
-
-rule("Init global vars")
-{
-    event
-    {
-        Ongoing - Each Player;
-        All;
-        All;
-    }
-
-    conditions
-    {
-        Player Variable(Event Player, B) == Null;
-    }
-
-    actions
-    {
-        Set Global Variable(C, Empty Array);
-            /*
-                Ilios Ruins
-                Modify Global Variable(C, Append To Array, Vector(-29, 101, -107));
-                Modify Global Variable(C, Append To Array, Vector(61, 107, -109));
-                Modify Global Variable(C, Append To Array, Vector(-30, 101, -98));
-                Modify Global Variable(C, Append To Array, 150);
-                Modify Global Variable(C, Append To Array, 90);
-                Modify Global Variable(C, Append To Array, Vector(28.5, 106, -105));
-            */
-            Modify Global Variable(C, Append To Array, Vector(94, 0, 42));
-            Modify Global Variable(C, Append To Array, Vector(97, 0, 79));
-            Modify Global Variable(C, Append To Array, Vector(36, 0, 59));
-            Modify Global Variable(C, Append To Array, 3);
-            Modify Global Variable(C, Append To Array, -3);
-            Modify Global Variable(C, Append To Array, Vector(66, -1, 64));
-        Set Global Variable(D, Empty Array);
-            Modify Global Variable(D, Append To Array, Vector(70, -2.5, 74));
-        Set Global Variable(F, 6);
+        Set Global Variable(A, 2700);
+        Set Global Variable(F, 5);
     }
 }
 
@@ -137,6 +105,103 @@ rule("Init gB")
     actions
     {
         Set Global Variable(B, Allowed Heroes(Event Player));
+    }
+}
+
+rule("Init uninitialised global vars and static UI")
+{
+    event
+    {
+        Ongoing - Global;
+    }
+
+    actions
+    {
+        Set Global Variable(C, Empty Array);
+            /*
+                Ilios Ruins
+                Modify Global Variable(C, Append To Array, Vector(-29, 101, -107));
+                Modify Global Variable(C, Append To Array, Vector(61, 107, -109));
+                Modify Global Variable(C, Append To Array, Vector(-30, 101, -98));
+                Modify Global Variable(C, Append To Array, 150);
+                Modify Global Variable(C, Append To Array, 90);
+                Modify Global Variable(C, Append To Array, Vector(28.5, 106, -105));
+            */
+            Modify Global Variable(C, Append To Array, Vector(94, 0, 42));
+            Modify Global Variable(C, Append To Array, Vector(97, 0, 96));
+            Modify Global Variable(C, Append To Array, Vector(36, 0, 59));
+            Modify Global Variable(C, Append To Array, 3);
+            Modify Global Variable(C, Append To Array, -3);
+            Modify Global Variable(C, Append To Array, Vector(66, -2, 64));
+        Set Global Variable(D, Empty Array);
+            Modify Global Variable(D, Append To Array, Vector(70, -2.5, 74));
+            Modify Global Variable(D, Append To Array, Vector(64, -2.5, 90));
+        Set Global Variable(E, 60);
+
+        Create HUD Text(
+            All Players(All Teams),
+            Null,
+            String(
+                "{0}: {1}",
+                String(
+                    "{0} {1}",
+                    String("Pick", Null, Null, Null),
+                    String("Hero", Null, Null, Null),
+                    Null
+                ),
+                String(
+                    "{0} {1}",
+                    String("Interact", Null, Null, Null),
+                    String(
+                        "({0})",
+                        String(
+                            "{0}: {1}",
+                            Hero(Symmetra),
+                            String(
+                                "{0} and {1}",
+                                String("Crouch", Null, Null, Null),
+                                String("Interact", Null, Null, Null),
+                                Null
+                            ),
+                            Null
+                        ),
+                        Null,
+                        Null
+                    ),
+                    Null
+                ),
+                Null
+            ),
+            Null,
+            Left,
+            -2,
+            White,
+            White,
+            White,
+            Visible To and String
+        );
+        Create HUD Text(
+            All Players(All Teams),
+            Null,
+            String(
+                "{0}:",
+                String(
+                    "{0} / {1}",
+                    String("Damage", Null, Null, Null),
+                    String("Min", Empty Array, Null, Null),
+                    Null
+                ),
+                Null,
+                Null
+            ),
+            Null,
+            Left,
+            -1,
+            White,
+            White,
+            White,
+            Visible To and String
+        );
     }
 }
 
@@ -195,13 +260,14 @@ rule("Scoring")
     actions
     {
         Skip If(Compare(Victim, ==, Attacker), 1);
-        Modify Player Score(Attacker, 1);
+            Modify Player Score(Attacker, 1);
         Skip If(Compare(Victim, !=, Attacker), 1);
-        Modify Player Score(Victim, -1);
+            Modify Player Score(Victim, -1);
     }
 }
 
-// Display the remaining health of the opponent after being eliminated.
+// Display the remaining health of the attacker after being eliminated.
+// Also triggers refresh for the attacker.
 rule("Health check")
 {
     event
@@ -214,6 +280,7 @@ rule("Health check")
     conditions
     {
         Entity Exists(Attacker) == True;
+        Attacker != Event Player;
     }
 
     actions
@@ -237,6 +304,8 @@ rule("Health check")
                 )
             )
         );
+
+        Set Player Variable(Attacker, M, 1);
     }
 }
 
@@ -308,6 +377,7 @@ rule("Smart respawn pt1")
                 Ray Cast Hit Position(
                     Vector(
                         X Component Of(Player Variable(Event Player, E)),
+                        // Ensures that the ceiling is in space.
                         Subtract(Value In Array(Global Variable(C), 3), 1),
                         Z Component Of(Player Variable(Event Player, E))
                     ),
@@ -337,10 +407,9 @@ rule("Smart respawn pt1")
                 ))
             )
         );
-        // anubis, volskaya
 
         Set Player Variable At Index(Event Player, K, 1, Player Variable(Event Player, E));
-        Set Player Variable At Index(Event Player, K, 2, Value In Array(Global Variable(C), 5));
+        Set Player Variable At Index(Event Player, K, 2, 999);
         Set Player Variable At Index(Event Player, K, 3, 0);
         Set Player Variable(Event Player, E, 1);
     }
@@ -370,24 +439,7 @@ rule("Smart respawn pt2")
 }
 
 // Respawns the player in place in order to reset cooldowns, cleanse, etc.
-// Pt1: handles exit cases. 
-rule("Refresh pt1")
-{
-    event
-    {
-        Player Dealt Final Blow;
-        All;
-        All;
-    }
-
-    actions
-    {
-        Set Player Variable(Event Player, M, 1);
-    }
-}
-
-// Pt2: respawns the player and activates teleport module as soon as it's free.
-rule("Refresh pt2")
+rule("Refresh")
 {
     event
     {
@@ -414,6 +466,86 @@ rule("Refresh pt2")
     }
 }
 
+// Reveals the player after a certain amount of time spent hiding.
+rule("Reveal")
+{
+    event
+    {
+        Ongoing - Each Player;
+        All;
+        All;
+    }
+
+	conditions
+	{
+		Filtered Array(
+            Remove From Array(All Players(All Teams), Event Player),
+            Is In Line of Sight(Position Of(Event Player), Position Of(Current Array Element), Barriers Do Not Block LOS)
+        ) == Empty Array;
+        Has Spawned(Event Player) == True;
+        Is Alive(Event Player) == True;
+	}
+
+	actions
+	{
+		Wait(Global Variable(F), Abort When False);
+
+		Small Message(Event Player, String("Revealed", Null, Null, Null));
+		Create Icon(
+            Remove From Array(All Players(All Teams), Event Player),
+            Eye Position(Event Player),
+            Arrow: Down,
+			Visible To and Position,
+            Red,
+            True
+        );
+		Set Player Variable At Index(Event Player, H, 0, Last Created Entity);
+	    Create Effect(Event Player, Light Shaft, Red, Position Of(Event Player), 1.5, Position and Radius);
+		Set Player Variable At Index(Event Player, H, 1, Last Created Entity);
+	}
+}
+
+rule("Unreveal regularly")
+{
+    event
+    {
+        Ongoing - Each Player;
+        All;
+        All;
+    }
+
+	conditions
+	{
+        Filtered Array(
+            Remove From Array(All Players(All Teams), Event Player),
+            Is In Line of Sight(Position Of(Event Player), Position Of(Current Array Element), Barriers Do Not Block LOS)
+        ) != Empty Array;
+	}
+
+	actions
+	{
+		Destroy Icon(Value In Array(Player Variable(Event Player, H), 0));
+		Destroy Effect(Value In Array(Player Variable(Event Player, H), 1));
+	}
+}
+
+rule("Unreveal on death")
+{
+    event
+    {
+        Player Died;
+        All;
+        All;
+    }
+
+    actions
+    {
+		Destroy Icon(Value In Array(Player Variable(Event Player, H), 0));
+		Destroy Effect(Value In Array(Player Variable(Event Player, H), 1));
+    }
+}
+
+// Hero select. Also resets the time and damage tracking variables of a player.
 rule("Hero select")
 {
     event
@@ -425,7 +557,14 @@ rule("Hero select")
 
     conditions
     {
-        Is Button Held(Event Player, Ultimate) == True;
+        Is Button Held(Event Player, Interact) == True;
+        Or(
+            Compare(Hero Of(Event Player), !=, Hero(Symmetra)),
+            And(
+                Compare(Hero Of(Event Player), ==, Hero(Symmetra)),
+                Is Button Held(Event Player, Crouch)
+            )
+        ) == True;
         Is Alive(Event Player) == True;
     }
 
@@ -441,120 +580,37 @@ rule("Hero select")
         Set Player Allowed Heroes(Event Player, Remove From Array(Global Variable(B), Hero Of(Event Player)));
         Wait(0.25, Ignore Condition);
         Set Player Allowed Heroes(Event Player, Global Variable(B));
-    }
-}
-
-rule("Count damage")
-{
-    event
-    {
-        Player Dealt Damage;
-        All;
-        All;
-    }
-    
-    conditions
-    {
-        Is Game In Progress == True;
-    }
-
-    actions
-    {
-        Abort If(Compare(Victim, ==, Event Player));
-        Modify Player Variable(Event Player, D, Add, Event Damage);
-    }
-}
-
-// Counts the number of seconds that the player has spent in-game.
-rule("Count seconds")
-{
-    event
-    {
-        Ongoing - Each Player;
-        All;
-        All;
-    }
-
-    conditions
-    {
-        Is Game In Progress == True;
-    }
-
-    actions
-    {
-        // Loop: count seconds.
-            Modify Player Variable(Event Player, B, Add, 1);
-            Wait(1, Ignore Condition);
-        Loop;
-    }
-}
-
-// Resets the time and damage counts of a player on hero change.
-rule("Reset counts")
-{
-    event
-    {
-        Ongoing - Each Player;
-        All;
-        All;
-    }
-
-    conditions
-    {
-        Compare(Hero Of(Event Player), ==, Player Variable(Event Player, C)) == False;
-        Hero Of(Event Player) == True;
-    }
-
-    actions
-    {
-        Set Player Variable(Event Player, C, Hero Of(Event Player));
-
+        
         Set Player Variable(Event Player, B, 0);
         Set Player Variable(Event Player, D, 0);
+        Set Player Variable(Event Player, F, Empty Array);
+        Set Player Variable(Event Player, G, 0);
     }
 }
 
-rule("Refresh DPS UI")
+
+
+// Damage UI __________________________________________________________________
+
+disabled rule("Damage UI") {event {Ongoing - Global;}}
+
+rule("Init damage UI")
 {
     event
     {
-        Ongoing - Global;
+        Ongoing - Each Player;
+        All;
+        All;
     }
 
     actions
     {
-        // Loop: refresh interval. Uses a fancy progress bar - only gF should
-        // be changed.
-            Set Global Variable(E, 7.49);
-            Chase Global Variable Over Time(E, -0.5, Global Variable(F), None);
-            Wait(Subtract(Global Variable(F), 0.1), Ignore Condition);
-            
-            Destroy All HUD Text;
-            Create HUD Text(
-                All Players(All Teams),
-                Null,
-                String(
-                    "{0} {1}",
-                    String("Loading", Null, Null, Null),
-                    Round To Integer(Divide(Subtract(Raise To Power(10, Round To Integer(Add(Global Variable(E), 1), To Nearest)), 1), 9), To Nearest),
-                    Null
-                ),
-                Null,
-                Left,
-                1,
-                White,
-                White,
-                White,
-                Visible To and String
-            );
-
-            Set Global Variable(E, -0.5);
-            Wait(0.016, Ignore Condition);
-        Loop;
+        Set Player Variable(Event Player, A, -1);
+        Set Player Variable(Event Player, C, -1);
     }
 }
 
-rule("Generate DPS UI")
+rule("Update damage UI")
 {
     event
     {
@@ -565,11 +621,30 @@ rule("Generate DPS UI")
 
     conditions
     {
-        Global Variable(E) == -0.5;
+        Player Variable(Event Player, C) != Index Of Array Value(
+            Sorted Array(
+                All Players(All Teams),
+                Multiply(Player Variable(Current Array Element, G), -1)
+            ),
+            Event Player
+        );
     }
 
     actions
     {
+        Set Player Variable(
+            Event Player,
+            C,
+            Index Of Array Value(
+                Sorted Array(
+                    All Players(All Teams),
+                    Multiply(Player Variable(Current Array Element, G), -1)
+                ),
+                Event Player
+            )
+        );
+
+        Destroy HUD Text(Player Variable(Event Player, A));
         Create HUD Text(
             All Players(All Teams),
             Null,
@@ -582,19 +657,82 @@ rule("Generate DPS UI")
                     Event Player,
                     Null
                 ),
-                Divide(Player Variable(Event Player, D), Player Variable(Event Player, B)),
+                Player Variable(Event Player, G),
                 Null
             ),
             Left,
-            Multiply(
-                Divide(Player Variable(Event Player, D), Player Variable(Event Player, B)),
-                -1
-            ),
+            Player Variable(Event Player, C),
             White,
             White,
             White,
             Visible To and String
         );
+        Set Player Variable(Event Player, A, Last Text ID);
+    }
+}
+
+// Also increases pG.
+rule("Fill damage buffer")
+{
+    event
+    {
+        Player Dealt Damage;
+        All;
+        All;
+    }
+    
+    conditions
+    {
+        Is Game In Progress == True;
+        Victim != Event Player;
+    }
+
+    actions
+    {
+        Modify Player Variable(Event Player, D, Add, Event Damage);
+        Modify Player Variable(Event Player, G, Add, Event Damage);
+    }
+}
+
+// Counts the number of seconds that the player has spent in-game
+// and updates damage tracking variables.
+rule("Count seconds and track damage")
+{
+    event
+    {
+        Ongoing - Each Player;
+        All;
+        All;
+    }
+
+    conditions
+    {
+        Is Game In Progress == True;
+    }
+
+    actions
+    {
+        // Loop.
+	        Set Player Variable At Index(
+                Event Player,
+                F,
+                Modulo(Player Variable(Event Player, B), Global Variable(E)),
+                Player Variable(Event Player, D)
+            );
+            Modify Player Variable(Event Player, B, Add, 1);
+            Modify Player Variable(
+                Event Player,
+                G,
+                Subtract,
+                Value In Array(
+                    Player Variable(Event Player, F),
+                    Modulo(Player Variable(Event Player, B), Global Variable(E))
+                )
+            );
+
+            Set Player Variable(Event Player, D, 0);
+            Wait(1, Ignore Condition);
+        Loop;
     }
 }
 
@@ -624,7 +762,11 @@ rule("Teleport module pt1")
     actions
     {
         Apply Impulse(
-            Event Player, Multiply(-1.000, Velocity Of(Event Player)), Square Root(Dot Product(Velocity Of(Event Player), Velocity Of(Event Player))), To World, Incorporate Contrary Motion
+            Event Player,
+            Multiply(-1.000, Velocity Of(Event Player)),
+            Square Root(Dot Product(Velocity Of(Event Player), Velocity Of(Event Player))),
+            To World,
+            Incorporate Contrary Motion
         );
         Set Gravity(Event Player, Absolute Value(0));
         Set Move Speed(Event Player, Absolute Value(0));
@@ -693,19 +835,33 @@ rule("Teleport module pt3")
         // Loop: set facing direction until it works, i.e. until the player
         // is roughly facing in the set direction.
             // If pK[2] was unspecified, constantly update it to the vector
-            // from the player to their opponent.
+            // from the player to gC[5].
             Skip If(Compare(Value In Array(Player Variable(Event Player, K), 0), !=, 3), 1);
                 Set Player Variable At Index(
-                    Event Player, K, 2, Subtract(Position Of(Value In Array(Player Variable(Event Player, F), 0)), Position Of(Event Player))
+                    Event Player,
+                    K,
+                    2,
+                    Vector Towards(
+                        Position Of(Event Player),
+                        Value In Array(Global Variable(C), 5)
+                    )
                 );
-            Set Facing(Event Player, Value In Array(Player Variable(Event Player, K), 2), To World);
+            Set Facing(
+                Event Player,
+                Value In Array(Player Variable(Event Player, K), 2),
+                To World
+            );
             Wait(0.016, Ignore Condition);
         Loop If(Compare(Absolute Value(Subtract(1, Dot Product(Facing Direction Of(Event Player), Normalize(Value In Array(Player Variable(Event Player, K), 2))))), >, 0.050));
 
         Set Move Speed(Event Player, 100);
         Set Gravity(Event Player, 100);
         Apply Impulse(
-            Event Player, Value In Array(Player Variable(Event Player, K), 3), Square Root(Dot Product(Value In Array(Player Variable(Event Player, K), 3), Value In Array(Player Variable(Event Player, K), 3))), To World, Incorporate Contrary Motion
+            Event Player,
+            Value In Array(Player Variable(Event Player, K), 3),
+            Square Root(Dot Product(Value In Array(Player Variable(Event Player, K), 3), Value In Array(Player Variable(Event Player, K), 3))),
+            To World,
+            Incorporate Contrary Motion
         );
         
         Set Player Variable At Index(Event Player, K, 0, 0);
@@ -766,8 +922,7 @@ disabled rule("Testing: display server performance")
     }
 }
 
-// Ability 1.
-disabled rule("Testing: increment score")
+disabled rule("Testing: increment score (a1)")
 {
     event
     {
@@ -787,8 +942,7 @@ disabled rule("Testing: increment score")
     }
 }
 
-// Primary + secondary fire.
-disabled rule("Testing: win round")
+disabled rule("Testing: win round (primary+secondary)")
 {
     event
     {
@@ -810,8 +964,7 @@ disabled rule("Testing: win round")
     }
 }
 
-// Secondary fire.
-disabled rule("Testing: activate refresh")
+disabled rule("Testing: activate refresh (secondary)")
 {
     event
     {
@@ -833,8 +986,7 @@ disabled rule("Testing: activate refresh")
     }
 }
 
-// Any communication.
-disabled rule("Testing: killbind")
+disabled rule("Testing: killbind (any comm)")
 {
     event
     {
@@ -884,8 +1036,7 @@ disabled rule("Testing: show position")
     }
 }
 
-// Ability 1.
-disabled rule("Testing: toggle gravity")
+disabled rule("Testing: toggle gravity (a1)")
 {
     event
     {
@@ -906,8 +1057,7 @@ disabled rule("Testing: toggle gravity")
     }
 }
 
-// Primary fire.
-disabled rule("Testing: teleport forwards")
+disabled rule("Testing: teleport forwards (primary)")
 {
     event
     {
