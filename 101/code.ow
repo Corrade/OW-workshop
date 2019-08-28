@@ -675,7 +675,7 @@ rule("Round evaluation")
 
     conditions
     {
-        Is Game In Progress == True;
+        Player Variable(Event Player, D) == 0;
         Or(
             Compare(Score Of(Event Player), >=, Global Variable(A)),
             And(
@@ -686,10 +686,19 @@ rule("Round evaluation")
                 )
             )
         ) == True;
+        Is Game In Progress == True;
     }
 
     actions
     {
+        // Handles the case where a round ends as the previous one is ending,
+        // which should not be possible in practice. Waits for the next tick to
+        // ensure 'round reset' is called again.
+        // If this situation occurs, note that 'round reset' may be called
+        // whilst the player is selecting their hero <=> the round history
+        // will not display a hero icon.
+        Wait(0.016, Ignore Condition);
+
         Skip If(Entity Exists(Value In Array(Player Variable(Event Player, F), 0)), 2);
             Set Player Variable(Event Player, D, 3);
             Abort;
@@ -756,9 +765,7 @@ rule("Round reset")
 
         // Wait for the opponent's round reset before resetting score.
         Wait(0.1, Ignore Condition);
-
         Set Player Score(Event Player, 0);
-        Set Player Variable(Event Player, D, 0);
 
         // Ensure the upcoming hero swap, triggered by pressing ult, doesn't
         // deduct a point.
@@ -776,6 +783,7 @@ rule("Round reset")
 
         Press Button(Event Player, Ultimate);
         Clear Status(Event Player, Invincible);
+        Set Player Variable(Event Player, D, 0);
     }
 }
 

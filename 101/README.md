@@ -33,11 +33,6 @@ This mode sheds the clunkiness of default 1v1 without distorting the balance or 
 
 
 
-## Known bugs
-The command for changing heroes sometimes doesn't bring up the hero roster and instead forces you to select a specific random hero. This is only a small inconvenience since you can just try to change heroes again, however I'm not sure why this is occurring.
-
-
-
 ## Changelog
 ### v1.1: Huge improvements to spawning
 - Improved the randomness of spawns.

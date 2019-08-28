@@ -15,8 +15,6 @@ Maps
         - Hanamura
 
 Heroes
-    - General
-        - Ultimate Generation: 10%
     - Disabled
         - Bastion
         - Brigitte
@@ -28,6 +26,8 @@ Heroes
         - Winston
         - Wrecking Ball
         - Zarya
+    - General
+        - Ultimate Generation: 10%
     - Baptiste
         - Immortality Field: Off
     - Symmetra
@@ -500,12 +500,12 @@ rule("Reveal")
             True
         );
 		Set Player Variable At Index(Event Player, H, 0, Last Created Entity);
-	    Create Effect(Event Player, Light Shaft, Red, Position Of(Event Player), 1.5, Position and Radius);
+	    Create Effect(Event Player, Light Shaft, Red, Position Of(Event Player), 1.75, Position and Radius);
 		Set Player Variable At Index(Event Player, H, 1, Last Created Entity);
 	}
 }
 
-rule("Unreveal regularly")
+rule("Unreveal by entering LOS")
 {
     event
     {
