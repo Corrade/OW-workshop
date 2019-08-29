@@ -1,0 +1,126 @@
+And(And(
+    /*
+    Let C be the center of the object, A be a vector on the ray and V
+    be a vector parallel to the ray.
+    Then the shortest distance D from C to the ray is given by
+
+        D = |C - A - projection(C - A onto V)|
+        = |C - A - abs[(C - A).V / |V|] * normalize(V)|.
+
+    Now we let the ray be the facing direction of the player passing
+    through eye level. That is specified by setting
+
+        V = facing direction, and
+        A = some point along the ray through eye position in the facing
+            direction.
+
+    Since facing direction is internally normalized, we can simplify
+    our expression for D to get
+
+        D = |C - A - abs[(C - A).V] * V|.
+
+    Now the goal is to check whether or not D <= r where r is the
+    radius of the object with center C, so we are left to compare
+
+        |C - A - abs[(C - A).V] * V| <= r.
+    */
+    Compare(
+        Distance Between(
+            Vector(0,0,0),
+            Subtract(
+                Player Variable(Event Player, C),
+                Add(
+                    /*
+                    Two things we left out:
+                    1. We need to ensure that the object is in front of the
+                    player. This is because we're checking whether or not
+                    the object is near the player's literal line of sight,
+                    which extends both forwards and backwards from the
+                    player's eyes.
+                    2. We need to choose a value for A.
+
+                    In turns out that choosing A = eye position, the most
+                    obvious choice, actually solves the first issue.
+                    This is very strange. Even stranger is that this behaviour
+                    is not consistent with other choices for A. Some
+                    choices even break logical bounds; D should always be
+                    less than or equal to the distance between eye position
+                    and C, but this is somehow not always true with some
+                    choices (e.g. A = -10 units along the line).
+                    But this can probably be safely ignored.
+                    */
+                    Eye Position(Event Player),
+                    Multiply(
+                        Absolute Value(
+                            Dot Product(
+                                Subtract(
+                                    Player Variable(Event Player, C),
+                                    Eye Position(Event Player)
+                                ),
+                                Facing Direction Of(Event Player)
+                            )
+                        ),
+                        Facing Direction Of(Event Player)
+                    )
+                )
+            )
+        ),
+        <=,
+        Player Variable(Event Player, R)
+    ),
+    /*
+    The next comparison is just an LOS check. We can implement this by
+    finding the closest point on our ray to C, given by
+        A + projection(C - A onto V).
+    This process is similar to what we've done previously.
+    */
+    Compare(
+        Is In Line of Sight(
+            Add(
+                Eye Position(Event Player),
+                Multiply(
+                    Absolute Value(
+                        Dot Product(
+                            Subtract(
+                                Player Variable(Event Player, C),
+                                Eye Position(Event Player)
+                            ),
+                            Facing Direction Of(Event Player)
+                        )
+                    ),
+                    Facing Direction Of(Event Player)
+                )
+            ),
+            Eye Position(Event Player),
+            Enemy Barriers Block LOS
+        ),
+        ==,
+        True
+    )),
+    /*
+    The final comparison is a range check and is pretty much identical to
+    the previous comparison.
+    */
+    Compare(
+        Distance Between(
+            Add(
+                Eye Position(Event Player),
+                Multiply(
+                    Absolute Value(
+                        Dot Product(
+                            Subtract(
+                                Player Variable(Event Player, C),
+                                Eye Position(Event Player)
+                            ),
+                            Facing Direction Of(Event Player)
+                        )
+                    ),
+                    Facing Direction Of(Event Player)
+                )
+                ),
+            Eye Position(Event Player)
+        ),
+        <=,
+        Player Variable(Event Player, A)
+    )
+)

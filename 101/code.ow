@@ -979,8 +979,10 @@ rule("Teleport module pt3")
     {
         // Loop: set facing direction until it works, i.e. until the player
         // is roughly facing in the set direction.
-            // If pK[2] was unspecified, constantly update it to the vector
-            // from the player to their opponent.
+            // If pK[2] was unspecified, set it to the vector
+            // from the player's new spawn to their opponent. This vector
+            // may change as the opponent moves so it is constantly updated
+            // in this loop.
             Skip If(Compare(Value In Array(Player Variable(Event Player, K), 0), !=, 3), 1);
                 Set Player Variable At Index(
                     Event Player,

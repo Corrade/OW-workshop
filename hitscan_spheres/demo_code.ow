@@ -1,4 +1,5 @@
-rule("Main") {
+rule("Main")
+{
     event {
         Ongoing - Each Player;
         All;
@@ -92,7 +93,8 @@ rule("Main") {
     }
 }
 
-rule("Update C") {
+rule("Update C")
+{
     event {
         Ongoing - Each Player;
         All;
