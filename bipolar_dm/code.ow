@@ -1,7 +1,7 @@
 /*
 Description ___________________________________________________________________
 
-A different flavour of Beemoo's aim arena. Features an auto-reload + CD reset after each elimination, and takes place in Hanamura.    [v1.0 by Corrade]
+WIP
 
 
 
@@ -64,11 +64,14 @@ pG = Damage dealt over the last gE seconds.
 pH = Reveal UI references.
     [0] = Global icon.
     [1] = Local effect.
-pK = Parameter list for teleport module. If an argument is 999, the module applies special values.
+pI = Damage/heal toggle.
+pJ = Most recent positive health.
+pK = Parameter list for teleport module.
     [0] = Trigger = 999. Resting value = 0. Also a checkpoint in teleport module.
-    [1] = Teleport destination.
-    [2] = Exit facing direction.
-    [3] = Exit velocity.
+    [1] = Teleport destination. Must be specified.
+    [2] = Exit facing direction. If 0, sets the player to face towards gC[5].
+    [3] = Exit velocity. Must be specified - 0 is fine.
+    [4] = Exit health. If 0, sets to max health.
 pM = Triggers refresh if 999. Resting value = 0. Also a checkpoint in refresh.
 pN = Whether or not the player variables have finished initialising.
 */
@@ -144,6 +147,33 @@ rule("Init uninitialised global vars and static UI")
             String(
                 "{0}: {1}",
                 String(
+                    "{0} and {1}",
+                    String("Crouch", Null, Null, Null),
+                    String("Jump", Null, Null, Null),
+                    Null
+                ),
+                String(
+                    "{0} / {1}",
+                    String("Damage", Null, Null, Null),
+                    String("Heal", Null, Null, Null),
+                    Null
+                ),
+                Null
+            ),
+            Null,
+            Left,
+            -3,
+            White,
+            White,
+            White,
+            Visible To and String
+        );
+        Create HUD Text(
+            All Players(All Teams),
+            Null,
+            String(
+                "{0}: {1}",
+                String(
                     "{0} {1}",
                     String("Pick", Null, Null, Null),
                     String("Hero", Null, Null, Null),
@@ -175,28 +205,6 @@ rule("Init uninitialised global vars and static UI")
             Null,
             Left,
             -2,
-            White,
-            White,
-            White,
-            Visible To and String
-        );
-        Create HUD Text(
-            All Players(All Teams),
-            Null,
-            String(
-                "{0}:",
-                String(
-                    "{0} / {1}",
-                    String("Damage", Null, Null, Null),
-                    String("Min", Empty Array, Null, Null),
-                    Null
-                ),
-                Null,
-                Null
-            ),
-            Null,
-            Left,
-            -1,
             White,
             White,
             White,
@@ -244,9 +252,9 @@ rule("Apply game settings")
 
 
 
-// Core _______________________________________________________________________
+// General ____________________________________________________________________
 
-disabled rule("Core") {event {Ongoing - Global;}}
+disabled rule("General") {event {Ongoing - Global;}}
 
 rule("Scoring")
 {
@@ -267,7 +275,6 @@ rule("Scoring")
 }
 
 // Display the remaining health of the attacker after being eliminated.
-// Also triggers refresh for the attacker.
 rule("Health check")
 {
     event
@@ -304,8 +311,6 @@ rule("Health check")
                 )
             )
         );
-
-        Set Player Variable(Attacker, M, 1);
     }
 }
 
@@ -324,9 +329,9 @@ rule("Instant respawn")
     }
 }
 
-// Respawns the player in a random position in the arena.
-// Pt1: generates an appropriate spawn and then prepares a call to
-// teleport module.
+// Respawns the player in a random position nearby their opponent.
+// Pt1: avoids continuing if a refresh should occur instead. Also resets
+// the refresh variable.
 rule("Smart respawn pt1")
 {
     event
@@ -344,6 +349,32 @@ rule("Smart respawn pt1")
 
     actions
     {
+        Skip If(Not(Player Variable(Event Player, M)), 2);
+            Set Player Variable(Event Player, M, 0);
+            Abort;
+        Set Player Variable(Event Player, E, 1);
+    }
+}
+
+// Pt2: generates an appropriate spawn and then prepares a call to teleport
+// module.
+rule("Smart respawn pt2")
+{
+    event
+    {
+        Ongoing - Each Player;
+        All;
+        All;
+    }
+
+    conditions
+    {
+        Player Variable(Event Player, E) == 1;
+    }
+
+    actions
+    {
+        
         // Loop: generate spawn.
             // A random point in the arena parallelogram disregarding height.
             // See notes on gC.
@@ -409,14 +440,15 @@ rule("Smart respawn pt1")
         );
 
         Set Player Variable At Index(Event Player, K, 1, Player Variable(Event Player, E));
-        Set Player Variable At Index(Event Player, K, 2, 999);
+        Set Player Variable At Index(Event Player, K, 2, 0);
         Set Player Variable At Index(Event Player, K, 3, 0);
-        Set Player Variable(Event Player, E, 1);
+        Set Player Variable At Index(Event Player, K, 4, 0);
+        Set Player Variable(Event Player, E, 2);
     }
 }
 
-// Pt2: activates teleport module as soon as it's free.
-rule("Smart respawn pt2")
+// Pt3: activates teleport module as soon as it's free.
+rule("Smart respawn pt3")
 {
     event
     {
@@ -427,7 +459,7 @@ rule("Smart respawn pt2")
 
     conditions
     {
-        Player Variable(Event Player, E) == 1;
+        Player Variable(Event Player, E) == 2;
         Value In Array(Player Variable(Event Player, K), 0) == 0;
     }
 
@@ -438,112 +470,6 @@ rule("Smart respawn pt2")
     }
 }
 
-// Respawns the player in place in order to reset cooldowns, cleanse, etc.
-rule("Refresh")
-{
-    event
-    {
-        Ongoing - Each Player;
-        All;
-        All;
-    }
-
-    conditions
-    {
-        Player Variable(Event Player, M) == 1;
-        Value In Array(Player Variable(Event Player, K), 0) == 0;
-    }
-
-    actions
-    {
-        Set Player Variable At Index(Event Player, K, 1, Position Of(Event Player));
-        Set Player Variable At Index(Event Player, K, 2, Facing Direction Of(Event Player));
-        Set Player Variable At Index(Event Player, K, 3, Velocity Of(Event Player));
-        Respawn(Event Player);
-        Set Player Variable At Index(Event Player, K, 0, 999);
-
-        Set Player Variable(Event Player, M, 0);
-    }
-}
-
-// Reveals the player after a certain amount of time spent hiding.
-rule("Reveal")
-{
-    event
-    {
-        Ongoing - Each Player;
-        All;
-        All;
-    }
-
-	conditions
-	{
-		Filtered Array(
-            Remove From Array(All Players(All Teams), Event Player),
-            Is In Line of Sight(Position Of(Event Player), Position Of(Current Array Element), Barriers Do Not Block LOS)
-        ) == Empty Array;
-        Has Spawned(Event Player) == True;
-        Is Alive(Event Player) == True;
-	}
-
-	actions
-	{
-		Wait(Global Variable(F), Abort When False);
-
-		Small Message(Event Player, String("Revealed", Null, Null, Null));
-		Create Icon(
-            Remove From Array(All Players(All Teams), Event Player),
-            Eye Position(Event Player),
-            Arrow: Down,
-			Visible To and Position,
-            Red,
-            True
-        );
-		Set Player Variable At Index(Event Player, H, 0, Last Created Entity);
-	    Create Effect(Event Player, Light Shaft, Red, Position Of(Event Player), 1.75, Position and Radius);
-		Set Player Variable At Index(Event Player, H, 1, Last Created Entity);
-	}
-}
-
-rule("Unreveal by entering LOS")
-{
-    event
-    {
-        Ongoing - Each Player;
-        All;
-        All;
-    }
-
-	conditions
-	{
-        Filtered Array(
-            Remove From Array(All Players(All Teams), Event Player),
-            Is In Line of Sight(Position Of(Event Player), Position Of(Current Array Element), Barriers Do Not Block LOS)
-        ) != Empty Array;
-	}
-
-	actions
-	{
-		Destroy Icon(Value In Array(Player Variable(Event Player, H), 0));
-		Destroy Effect(Value In Array(Player Variable(Event Player, H), 1));
-	}
-}
-
-rule("Unreveal on death")
-{
-    event
-    {
-        Player Died;
-        All;
-        All;
-    }
-
-    actions
-    {
-		Destroy Icon(Value In Array(Player Variable(Event Player, H), 0));
-		Destroy Effect(Value In Array(Player Variable(Event Player, H), 1));
-    }
-}
 
 // Hero select. Also resets the time and damage tracking variables of a player.
 rule("Hero select")
@@ -585,6 +511,193 @@ rule("Hero select")
         Set Player Variable(Event Player, D, 0);
         Set Player Variable(Event Player, F, Empty Array);
         Set Player Variable(Event Player, G, 0);
+    }
+}
+
+
+
+// Reveal _____________________________________________________________________
+
+// Reveals the player after a certain amount of time spent hiding.
+rule("Reveal")
+{
+    event
+    {
+        Ongoing - Each Player;
+        All;
+        All;
+    }
+
+    conditions
+    {
+        Filtered Array(
+            Remove From Array(All Players(All Teams), Event Player),
+            Is In Line of Sight(Eye Position(Event Player), Eye Position(Current Array Element), Barriers Do Not Block LOS)
+        ) == Empty Array;
+        Number of Players(All Teams) > 1;
+        Has Spawned(Event Player) == True;
+        Is Alive(Event Player) == True;
+    }
+
+    actions
+    {
+        Wait(Global Variable(F), Abort When False);
+
+        Small Message(Event Player, String("Revealed", Null, Null, Null));
+        Create Icon(
+            Remove From Array(All Players(All Teams), Event Player),
+            Eye Position(Event Player),
+            Exclamation Mark,
+            Visible To and Position,
+            Red,
+            True
+        );
+        Set Player Variable At Index(Event Player, H, 0, Last Created Entity);
+        Create Effect(Event Player, Light Shaft, Red, Position Of(Event Player), 1.75, Position and Radius);
+        Set Player Variable At Index(Event Player, H, 1, Last Created Entity);
+    }
+}
+
+rule("Unreveal by entering LOS")
+{
+    event
+    {
+        Ongoing - Each Player;
+        All;
+        All;
+    }
+
+    conditions
+    {
+        Filtered Array(
+            Remove From Array(All Players(All Teams), Event Player),
+            Is In Line of Sight(Eye Position(Event Player), Eye Position(Current Array Element), Barriers Do Not Block LOS)
+        ) != Empty Array;
+    }
+
+    actions
+    {
+        Destroy Icon(Value In Array(Player Variable(Event Player, H), 0));
+        Destroy Effect(Value In Array(Player Variable(Event Player, H), 1));
+    }
+}
+
+rule("Unreveal on death")
+{
+    event
+    {
+        Player Died;
+        All;
+        All;
+    }
+
+    actions
+    {
+        Destroy Icon(Value In Array(Player Variable(Event Player, H), 0));
+        Destroy Effect(Value In Array(Player Variable(Event Player, H), 1));
+    }
+}
+
+
+
+// Damage/heal toggle _________________________________________________________
+
+rule("Toggle damage/heals")
+{
+    event
+    {
+        Ongoing - Each Player;
+        All;
+        All;
+    }
+
+    conditions
+    {
+        Is Button Held(Event Player, Crouch) == True;
+        Is Button Held(Event Player, Jump) == True;
+    }
+
+    actions
+    {
+        Set Player Variable(Event Player, I, Subtract(1, Player Variable(Event Player, I)));
+    }
+}
+
+// Converts damage to heals. Also refreshes the victim if the damage causes
+// death before it is overriden by the heals.
+rule("Convert")
+{
+    event
+    {
+        Player Dealt Damage;
+        All;
+        All;
+    }
+
+    conditions
+    {
+        Player Variable(Event Player, I) == 1;
+        Victim != Attacker;
+    }
+    
+    actions
+    {
+        Skip If(Compare(Health(Victim), >, 0), 2);
+            Modify Player Variable(Victim, J, Add, Event Damage);
+            Set Player Variable(Victim, M, 1);
+        Heal(Victim, Attacker, Multiply(2, Event Damage));
+    }
+}
+
+// Respawns the player in place.
+rule("Refresh")
+{
+    event
+    {
+        Ongoing - Each Player;
+        All;
+        All;
+    }
+
+    conditions
+    {
+        Player Variable(Event Player, M) == 1;
+        Value In Array(Player Variable(Event Player, K), 0) == 0;
+    }
+
+    actions
+    {
+        Set Player Variable At Index(Event Player, K, 1, Position Of(Event Player));
+        Set Player Variable At Index(Event Player, K, 2, Facing Direction Of(Event Player));
+        Set Player Variable At Index(Event Player, K, 3, Velocity Of(Event Player));
+        Set Player Variable At Index(Event Player, K, 4, Player Variable(Event Player, J));
+        Respawn(Event Player);
+        Set Player Variable At Index(Event Player, K, 0, 999);
+        
+        // pM is reset by smart respawn, which will be triggered after
+        // instant respawn, after the player respawns. This makes for
+        // rather tightly-coupled code but solves an otherwise fiddly issue.
+    }
+}
+
+rule("Track health")
+{
+    event
+    {
+        Player Took Damage;
+        All;
+        All;
+    }
+
+    conditions
+    {
+        Health(Event Player) != Player Variable(Event Player, J);
+        Health(Event Player) > 0;
+    }
+
+    actions
+    {
+        Set Player Variable(Event Player, J, Health(Event Player));
     }
 }
 
@@ -713,7 +826,7 @@ rule("Count seconds and track damage")
     actions
     {
         // Loop.
-	        Set Player Variable At Index(
+            Set Player Variable At Index(
                 Event Player,
                 F,
                 Modulo(Player Variable(Event Player, B), Global Variable(E)),
@@ -742,8 +855,8 @@ rule("Count seconds and track damage")
 
 disabled rule("Modules") {event {Ongoing - Global;}}
 
-// This rule sequence is needed because teleporting and set facing have
-// strange delays/requirements that must be waited for.
+// This rule sequence is needed because teleporting, set facing and damaging
+// have strange delays/requirements that must be waited for.
 // Pt1: cancels motion.
 rule("Teleport module pt1")
 {
@@ -803,16 +916,24 @@ rule("Teleport module pt2")
             Wait(0.016, Ignore Condition);
         Loop If Condition Is True;
 
-        // Fork execution based on whether or not pK[2] is specified.
-        Skip If(Compare(Value In Array(Player Variable(Event Player, K), 2), !=, 999), 2);
-            Set Player Variable At Index(Event Player, K, 0, 3);
-            Abort();
+        // If pK[2] was unspecified, set it to the vector from the player's
+        // new spawn to gC[5].
+        Skip If(Compare(Value In Array(Player Variable(Event Player, K), 2), !=, 0), 1);
+                Set Player Variable At Index(
+                    Event Player,
+                    K,
+                    2,
+                    Vector Towards(
+                        Position Of(Event Player),
+                        Value In Array(Global Variable(C), 5)
+                    )
+                );
+        
         Set Player Variable At Index(Event Player, K, 0, 2);
     }
 }
 
-// Pt3: ensures set facing works, applies the exit velocity and restores
-// motion.
+// Pt3: ensures set facing works.
 rule("Teleport module pt3")
 {
     event
@@ -824,28 +945,14 @@ rule("Teleport module pt3")
 
     conditions
     {
-        Or(
-            Compare(Value In Array(Player Variable(Event Player, K), 0), ==, 2),
-            Compare(Value In Array(Player Variable(Event Player, K), 0), ==, 3)
-        ) == True;
+        Value In Array(Player Variable(Event Player, K), 0) == 2;
     }
 
     actions
     {
+        /*
         // Loop: set facing direction until it works, i.e. until the player
         // is roughly facing in the set direction.
-            // If pK[2] was unspecified, constantly update it to the vector
-            // from the player to gC[5].
-            Skip If(Compare(Value In Array(Player Variable(Event Player, K), 0), !=, 3), 1);
-                Set Player Variable At Index(
-                    Event Player,
-                    K,
-                    2,
-                    Vector Towards(
-                        Position Of(Event Player),
-                        Value In Array(Global Variable(C), 5)
-                    )
-                );
             Set Facing(
                 Event Player,
                 Value In Array(Player Variable(Event Player, K), 2),
@@ -853,6 +960,42 @@ rule("Teleport module pt3")
             );
             Wait(0.016, Ignore Condition);
         Loop If(Compare(Absolute Value(Subtract(1, Dot Product(Facing Direction Of(Event Player), Normalize(Value In Array(Player Variable(Event Player, K), 2))))), >, 0.050));
+        */
+
+        // If pK[4] was unspecified, set to max health.
+        Skip If(Compare(Value In Array(Player Variable(Event Player, K), 4), !=, 0), 1);
+            Set Player Variable At Index(Event Player, K, 4, Max Health(Event Player));
+        
+        Set Player Variable At Index(Event Player, K, 0, 3);
+    }
+}
+
+// Pt4: ensures health setting works, applies the exit velocity, restores
+// motion and sets health.
+rule("Teleport module pt4")
+{
+    event
+    {
+        Ongoing - Each Player;
+        All;
+        All;
+    }
+
+    conditions
+    {
+        Value In Array(Player Variable(Event Player, K), 0) == 3;
+    }
+
+    actions
+    {
+        // Loop: set health until it works.
+            Damage(
+                Event Player,
+                Null,
+                Subtract(Max Health(Event Player), Value In Array(Player Variable(Event Player, K), 4))
+            );
+            Wait(0.016, Ignore Condition);
+        Loop If(Compare(Health(Event Player), !=, Value In Array(Player Variable(Event Player, K), 4)));
 
         Set Move Speed(Event Player, 100);
         Set Gravity(Event Player, 100);
@@ -863,7 +1006,7 @@ rule("Teleport module pt3")
             To World,
             Incorporate Contrary Motion
         );
-        
+
         Set Player Variable At Index(Event Player, K, 0, 0);
     }
 }
@@ -982,7 +1125,7 @@ disabled rule("Testing: activate refresh (secondary)")
 
     actions
     {
-        Set Player Variable(Event Player, M, 999);
+        Set Player Variable(Event Player, M, 1);
     }
 }
 
