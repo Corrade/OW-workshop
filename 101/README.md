@@ -8,6 +8,7 @@
 This mode sheds the clunkiness of default 1v1 without distorting the balance or mechanics of regular Overwatch. Based on Lange's TF2 mod, MGE.
 
 ## Import codes
+- v1.5: unavailable
 - v1.4: CC8JR
 - v1.3: 9NJSR
 - v1.2: 5XWAR
@@ -55,3 +56,9 @@ This mode sheds the clunkiness of default 1v1 without distorting the balance or 
 - Switching heroes now automatically opens the hero select UI - taken from Beemoo's aim arena.
 - Round finishes have been made fancier.
 - Added a notification for opponent hero changes.
+
+### v1.5: Minor bug fixes
+- Disabled Sigma.
+- Fixed a bug with respawning multiple times in a very short interval.
+- Removed a small impulse the player would receive towards their opponent upon respawning.
+- Disabled the in-game announcer.

@@ -1,7 +1,7 @@
 /*
 Description ___________________________________________________________________
 
-101: Streamlined 1v1. This mode sheds the clunkiness of default 1v1 without distorting the balance or mechanics of regular Overwatch. Based on Lange's TF2 mod, MGE.    [v1.4 by Corrade: more info @ workshop.elohell.gg]
+101: Streamlined 1v1. This mode sheds the clunkiness of default 1v1 without distorting the balance or mechanics of regular Overwatch. Based on Lange's TF2 mod, MGE.    [v1.5 by Corrade: more info @ workshop.elohell.gg]
 
 
 
@@ -28,6 +28,7 @@ Heroes
         - Orisa
         - Reinhardt
         - Roadhog
+        - Sigma
         - Winston
         - Wrecking Ball
         - Zarya
@@ -66,11 +67,11 @@ pJ = Parameter list for print round module.
     [0] = Trigger = true. Resting value = false.
     [1] = Loop counter.
     [2] = Whether or not to print a blank line.
-pK = Parameter list for teleport module. If an argument is 999, the module applies special values.
+pK = Parameter list for teleport module.
     [0] = Trigger = 999. Resting value = 0. Also a checkpoint in teleport module.
-    [1] = Teleport destination.
-    [2] = Exit facing direction.
-    [3] = Exit velocity.
+    [1] = Teleport destination. Must be specified.
+    [2] = Exit facing direction. If 0, sets facing towards the opponent.
+    [3] = Exit velocity. Must be specified - 0 is fine.
 pM = Triggers refresh if 999. Resting value = 0. Also a checkpoint in refresh.
 pP = Temporary memory for managing 2D arrays.
 */
@@ -297,6 +298,7 @@ rule("Apply game settings")
     actions
     {
         Disable Built-In Game Mode Completion;
+        Disable Built-In Game Mode Announcer;
         Disable Built-In Game Mode Scoring;
         Set Match Time(0);
     }
@@ -415,8 +417,8 @@ rule("Smart respawn pt1")
     }
 }
 
-// Pt2: generates an appropriate spawn and then prepares a call to
-// teleport module.
+// Pt2: waits for teleport module to be free, generates an appropriate
+// spawn and calls teleport module.
 rule("Smart respawn pt2")
 {
     event
@@ -429,6 +431,7 @@ rule("Smart respawn pt2")
     conditions
     {
         Player Variable(Event Player, E) == 1;
+        Value In Array(Player Variable(Event Player, K), 0) == 0;
     }
 
     actions
@@ -456,30 +459,8 @@ rule("Smart respawn pt2")
         );
 
         Set Player Variable At Index(Event Player, K, 1, Player Variable(Event Player, E));
-        Set Player Variable At Index(Event Player, K, 2, 999);
-        Set Player Variable At Index(Event Player, K, 3, 999);
-        Set Player Variable(Event Player, E, 2);
-    }
-}
-
-// Pt3: activates teleport module as soon as it's free.
-rule("Smart respawn pt3")
-{
-    event
-    {
-        Ongoing - Each Player;
-        All;
-        All;
-    }
-
-    conditions
-    {
-        Player Variable(Event Player, E) == 2;
-        Value In Array(Player Variable(Event Player, K), 0) == 0;
-    }
-
-    actions
-    {
+        Set Player Variable At Index(Event Player, K, 2, 0);
+        Set Player Variable At Index(Event Player, K, 3, 0);
         Set Player Variable At Index(Event Player, K, 0, 999);
         Set Player Variable(Event Player, E, 0);
     }
@@ -949,7 +930,8 @@ rule("Teleport module pt2")
         Loop If Condition Is True;
 
         // Fork execution based on whether or not pK[2] is specified.
-        Skip If(Compare(Value In Array(Player Variable(Event Player, K), 2), !=, 999), 2);
+        // See pt3 as to why this is necessary.
+        Skip If(Compare(Value In Array(Player Variable(Event Player, K), 2), !=, 0), 2);
             Set Player Variable At Index(Event Player, K, 0, 3);
             Abort();
         Set Player Variable At Index(Event Player, K, 0, 2);
@@ -957,7 +939,7 @@ rule("Teleport module pt2")
 }
 
 // Pt3: ensures set facing works, applies the exit velocity and restores
-// motion.
+// motion. Note that set facing will not work well with bots.
 rule("Teleport module pt3")
 {
     event
@@ -983,16 +965,10 @@ rule("Teleport module pt3")
             // from the player's new spawn to their opponent. This vector
             // may change as the opponent moves so it is constantly updated
             // in this loop.
+            // It was necessary to set pK[0] to mark whether or not pK[2] was
+            // unspecified as pK[2] may be changed in this loop.
             Skip If(Compare(Value In Array(Player Variable(Event Player, K), 0), !=, 3), 1);
-                Set Player Variable At Index(
-                    Event Player,
-                    K,
-                    2,
-                    Vector Towards(
-                        Position Of(Event Player),
-                        Position Of(Value In Array(Player Variable(Event Player, F), 0))
-                    )
-                );
+                Set Player Variable At Index(Event Player, K, 2, Vector Towards(Position Of(Event Player), Position Of(Value In Array(Player Variable(Event Player, F), 0))));
             Set Facing(
                 Event Player,
                 Value In Array(Player Variable(Event Player, K), 2),
@@ -1001,11 +977,6 @@ rule("Teleport module pt3")
             Wait(0.016, Ignore Condition);
         Loop If(Compare(Absolute Value(Subtract(1, Dot Product(Facing Direction Of(Event Player), Normalize(Value In Array(Player Variable(Event Player, K), 2))))), >, 0.050));
 
-        // If the exit velocity is unspecified, set it to a small force
-        // in the direction of the opponent.
-        Skip If(Compare(Value In Array(Player Variable(Event Player, K), 3), !=, 999), 1);
-            Set Player Variable At Index(Event Player, K, 3, Multiply(5, Normalize(Value In Array(Player Variable(Event Player, K), 2))));
-        
         Set Move Speed(Event Player, 100);
         Set Gravity(Event Player, 100);
         Apply Impulse(
