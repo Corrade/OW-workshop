@@ -9,6 +9,7 @@ Settings ______________________________________________________________________
 
 Modes
     - Deathmatch
+        - Game mode start: Immediately
         - Spawn Health Packs: Disabled
 Maps
     - Deathmatch
@@ -92,7 +93,7 @@ rule("[Change me!] Set score limit")
 
     actions
     {
-        Set Global Variable(A, 10);
+        Set Global Variable(A, 15);
     }
 }
 
@@ -1045,8 +1046,7 @@ disabled rule("Testing: display server performance")
     }
 }
 
-// Ability 1.
-disabled rule("Testing: increment score")
+disabled rule("Testing: increment score (a1)")
 {
     event
     {
@@ -1066,8 +1066,7 @@ disabled rule("Testing: increment score")
     }
 }
 
-// Primary + secondary fire.
-disabled rule("Testing: win round")
+disabled rule("Testing: win round (primary+secondary)")
 {
     event
     {
@@ -1089,8 +1088,27 @@ disabled rule("Testing: win round")
     }
 }
 
-// Secondary fire.
-disabled rule("Testing: activate refresh")
+disabled rule("Testing: killbind (crouch)")
+{
+    event
+    {
+        Ongoing - Each Player;
+        All;
+        All;
+    }
+
+    conditions
+    {
+        Is Button Held(Event Player, Crouch) == True;
+    }
+
+    actions
+    {
+        Kill(Event Player, Null);
+    }
+}
+
+disabled rule("Testing: activate refresh (secondary)")
 {
     event
     {
@@ -1109,27 +1127,6 @@ disabled rule("Testing: activate refresh")
     actions
     {
         Set Player Variable(Event Player, M, 999);
-    }
-}
-
-// Any communication.
-disabled rule("Testing: killbind")
-{
-    event
-    {
-        Ongoing - Each Player;
-        All;
-        All;
-    }
-
-    conditions
-    {
-        Is Communicating Any(Event Player) == True;
-    }
-
-    actions
-    {
-        Kill(Event Player, Null);
     }
 }
 

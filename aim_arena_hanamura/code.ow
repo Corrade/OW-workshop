@@ -153,6 +153,10 @@ rule("Init other global vars and static objects")
         Set Global Variable At Index(G, 4, Empty Array);
             Modify Global Variable At Index(G, 4, Append To Array, Vector(66.66, -3.24, 78.24));
             Modify Global Variable At Index(G, 4, Append To Array, 2.19);
+        // Right faux wall spawn entrance
+            Set Global Variable At Index(G, 4, Empty Array);
+            Modify Global Variable At Index(G, 4, Append To Array, Vector(66.66, -3.24, 78.24));
+            Modify Global Variable At Index(G, 4, Append To Array, 2.19);
 
         Create HUD Text(
             All Players(All Teams),
@@ -732,40 +736,7 @@ rule("Update damage leaderboard")
                     Visible To and String
                 );
                 Set Player Variable(Event Player, A, Last Text ID);
-            Wait(
-                // Wait heuristic: wait time is proportional to the damage
-                // difference between the player and the closest other player
-                // (damage-wise). Wait time = max(1, difference/50).
-                Max(
-                    1,
-                    Round To Integer(
-                        Divide(
-                            Absolute Value(
-                                Subtract(
-                                    Player Variable(Event Player, G),
-                                    Player Variable(
-                                        First Of(
-                                            Sorted Array(
-                                                Remove From Array(All Players(All Teams), Event Player),
-                                                Absolute Value(
-                                                    Subtract(
-                                                        Player Variable(Event Player, G),
-                                                        Player Variable(Current Array Element, G)
-                                                    )
-                                                )
-                                            )
-                                        ),
-                                        G
-                                    )
-                                )
-                            ),
-                            50
-                        ),
-                        To Nearest
-                    )
-                ),
-                Restart When True
-            );
+            Wait(2, Ignore Condition);
         Loop();
     }
 }

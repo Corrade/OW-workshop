@@ -8,7 +8,7 @@
 This mode sheds the clunkiness of default 1v1 without distorting the balance or mechanics of regular Overwatch. Based on Lange's TF2 mod, MGE.
 
 ## Import codes
-- v1.5: unavailable
+- v1.5: NECPV
 - v1.4: CC8JR
 - v1.3: 9NJSR
 - v1.2: 5XWAR
@@ -24,7 +24,6 @@ This mode sheds the clunkiness of default 1v1 without distorting the balance or 
 - **Health check**: See how much health your opponent had remaining after they kill you.
 - **Seamless rounds**: After a match finishes, scores reset and the next round begins immediately.
 - **Round history**: Leave the record-keeping to the gamemode.
-- **General settings**: Default: first to 10, no health packs, no scuffed heroes or abilities, no ults, and only maps you'll see in QP/competitive. Change these settings as you see fit.
 
 
 
@@ -59,6 +58,7 @@ This mode sheds the clunkiness of default 1v1 without distorting the balance or 
 
 ### v1.5: Minor bug fixes
 - Disabled Sigma.
+- Games now start immediately.
+- Disabled the in-game announcer.
 - Fixed a bug with respawning multiple times in a very short interval.
 - Removed a small impulse the player would receive towards their opponent upon respawning.
-- Disabled the in-game announcer.
