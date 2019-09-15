@@ -1,4 +1,4 @@
-[EloHell workshop page](https://workshop.elohell.gg/uVYxfgMIq/101%3A+Streamlined+1v1)
+[EloHell workshop page](https://workshop.elohell.gg/uVYxfgMIq)
 
 [Video (v1.0)](https://www.youtube.com/watch?v=XsfxXvnWb3M)
 
@@ -8,7 +8,7 @@
 This mode sheds the clunkiness of default 1v1 without distorting the balance or mechanics of regular Overwatch. Based on Lange's TF2 mod, MGE.
 
 ## Import codes
-- v1.5: NECPV
+- v1.5: 7NAY0
 - v1.4: CC8JR
 - v1.3: 9NJSR
 - v1.2: 5XWAR

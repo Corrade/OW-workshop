@@ -1,7 +1,7 @@
 /*
 Description ___________________________________________________________________
 
-A reconstruction of Beemoo's aim arena, set in Hanamura. New features include visual hiding prevention, health checks and a snappier damage leaderboard (rankings broken/inconsistent atm).    [test version by Corrade]
+A reconstruction of Beemoo's aim arena, set in Hanamura. Slimmer and faithful.    [v1.0 by Corrade: more info @ workshop.elohell.gg/cT48-6oqUULxGYq]
 
 
 
@@ -516,11 +516,8 @@ rule("Hero select")
 
     actions
     {
-        Skip If(
-            Compare(Normalized Health(Event Player), ==, 1),
-            1
-        );
-        Modify Player Score(Event Player, -1);
+        Skip If(Compare(Normalized Health(Event Player), ==, 1), 1);
+            Modify Player Score(Event Player, -1);
 
         // Taken from the original aim arena (Beemoo).
         Set Player Allowed Heroes(Event Player, Remove From Array(Global Variable(B), Hero Of(Event Player)));
