@@ -8,7 +8,7 @@
 This mode sheds the clunkiness of default 1v1 without distorting the balance or mechanics of regular Overwatch. Based on Lange's TF2 mod, MGE.
 
 ## Import codes
-- v1.5: 7NAY0
+- v1.5: B03MC
 - v1.4: CC8JR
 - v1.3: 9NJSR
 - v1.2: 5XWAR
@@ -62,3 +62,4 @@ This mode sheds the clunkiness of default 1v1 without distorting the balance or 
 - Disabled the in-game announcer.
 - Fixed a bug with respawning multiple times in a very short interval.
 - Removed a small impulse the player would receive towards their opponent upon respawning.
+- Fixed a bug with an endless round-reset loop occuring when an enemy with a non-zero scrore would disconnect.

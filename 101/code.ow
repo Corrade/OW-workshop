@@ -126,7 +126,8 @@ rule("Init UI")
             White,
             White,
             White,
-            Visible To and String
+            Visible To and String,
+            Visible Always
         );
         Create HUD Text(
             All Players(All Teams),
@@ -148,7 +149,8 @@ rule("Init UI")
             White,
             White,
             White,
-            Visible To and String
+            Visible To and String,
+            Visible Always
         );
         Create HUD Text(
             All Players(All Teams),
@@ -170,7 +172,8 @@ rule("Init UI")
             White,
             White,
             White,
-            Visible To and String
+            Visible To and String,
+            Visible Always
         );
     }
 }
@@ -749,6 +752,10 @@ rule("Round reset")
         Wait(0.1, Ignore Condition);
         Set Player Score(Event Player, 0);
 
+        // Prevents the round resetting again due to an uncleared score of
+        // a disconnected enemy.
+        Set Player Variable At Index(Event Player, F, 1, 0);
+
         // Ensure the upcoming hero swap, triggered by pressing ult, doesn't
         // deduct a point.
         Set Status(Event Player, Null, Invincible, 999);
@@ -1017,7 +1024,8 @@ disabled rule("Testing: display server performance")
             White,
             White,
             White,
-            Visible To and String
+            Visible To and String,
+            Default Visibility
         );
         Create HUD Text(
             All Players(All Teams),
@@ -1029,7 +1037,8 @@ disabled rule("Testing: display server performance")
             White,
             White,
             White,
-            Visible To and String
+            Visible To and String,
+            Default Visibility
         );
         Create HUD Text(
             All Players(All Teams),
@@ -1041,7 +1050,8 @@ disabled rule("Testing: display server performance")
             White,
             White,
             White,
-            Visible To and String
+            Visible To and String,
+            Default Visibility
         );
     }
 }
@@ -1156,6 +1166,6 @@ disabled rule("Testing: show position")
 
     actions
     {
-        Create HUD Text(All Players(All Teams), Position Of(Event Player), Null, Null, Left, 0, White, White, White, Visible To and String);
+        Create HUD Text(All Players(All Teams), Position Of(Event Player), Null, Null, Left, 0, White, White, White, Visible To and String, Default Visibility);
     }
 }
