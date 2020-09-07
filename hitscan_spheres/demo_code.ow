@@ -86,7 +86,7 @@ rule("Main")
                     Player Variable(Event Player, A)
                 )
             ),
-            Null, Null, Top, 999, White, White, White, Visible To and String
+            Null, Null, Top, 999, White, White, White, Visible To and String, Default Visibility
         );
 
         Create Effect(All Players(All Teams), Sphere, Blue, Player Variable(Event Player, C), Divide(Player Variable(Event Player, R), 0.98472), Visible To Position and Radius);
