@@ -2,16 +2,16 @@ And(
     And(
         Compare(
             Distance Between(
-                Vector(0,0,0),
+                Vector(0, 0, 0),
                 Subtract(
-                    Player Variable(Event Player, C),
+                    Player Variable(Event Player, hs_center),
                     Add(
                         Eye Position(Event Player),
                         Multiply(
                             Absolute Value(
                                 Dot Product(
                                     Subtract(
-                                        Player Variable(Event Player, C),
+                                        Player Variable(Event Player, hs_center),
                                         Eye Position(Event Player)
                                     ),
                                     Facing Direction Of(Event Player)
@@ -23,7 +23,7 @@ And(
                 )
             ),
             <=,
-            Player Variable(Event Player, R)
+            Player Variable(Event Player, hs_radius)
         ),
         Compare(
             Is In Line of Sight(
@@ -33,7 +33,7 @@ And(
                         Absolute Value(
                             Dot Product(
                                 Subtract(
-                                    Player Variable(Event Player, C),
+                                    Player Variable(Event Player, hs_center),
                                     Eye Position(Event Player)
                                 ),
                                 Facing Direction Of(Event Player)
@@ -57,7 +57,7 @@ And(
                     Absolute Value(
                         Dot Product(
                             Subtract(
-                                Player Variable(Event Player, C),
+                                Player Variable(Event Player, hs_center),
                                 Eye Position(Event Player)
                             ),
                             Facing Direction Of(Event Player)
@@ -65,10 +65,10 @@ And(
                     ),
                     Facing Direction Of(Event Player)
                 )
-                ),
+            ),
             Eye Position(Event Player)
         ),
         <=,
-        Player Variable(Event Player, A)
+        Player Variable(Event Player, hs_range)
     )
 )

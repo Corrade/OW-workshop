@@ -1,0 +1,64 @@
+brawl
+dot
+- numbers overtuned, mechanic overemphasised
+- timer unnecessary, could be shortened to 1s
+- feels too artificial, easy to focus if it's just the one goal
+
+checkpoint
+- follow road instead of objective sort of thing
+- checkpoints only visible to main tank, main tank must communicate
+- different sets of lights for different approahces to a point
+
+rotation => prompt more rotations
+
+
+
+1.
+forces rotations by giving bots shields. if shoot shield, nullify damage, provide feedback
+
+
+spam
+- play long range, work with consistent damage and poke
+- keep distance away from enemy
+- punish enemies for bad rotations and entering sightlines
+- take map control, concept of lanes
+- practice how to take and control space
+- e.g. keep x player in los
+
+
+
+2.
+beam idea thing, beams represent LOS
+
+
+dive
+
+3.
+x
+
+a) scouting
+b) select target
+c) stage the dive; setup positions, multiple angles
+d) go
+
+practice c)
+
+
+
+3.
+dive
+just give the dive target a fast heal?
+
+
+
+
+how many angles the target his on them?
+
+
+
+
+don't overuse the workshop
+would my task be better accomplished if I just spoke to my players in comms about it?
+does my mode make the flow of the game too rigid?
+will players learn to rely on my mode?
+does my mode 

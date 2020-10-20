@@ -1,0 +1,2581 @@
+settings
+{
+    main
+    {
+        Description: "Streamlined 1v1. Preserves the balance and mechanics of regular Overwatch. Based on MGE from TF2. [v1.6 workshop.elohell.gg/uVYxfgMIq]"
+    }
+
+    lobby
+    {
+        Match Voice Chat: Enabled
+        Max FFA Players: 2
+        Max Spectators: 12
+    }
+
+    modes
+    {
+        Deathmatch
+        {
+            disabled maps
+            {
+                Black Forest
+                Black Forest Winter
+                Castillo
+                Château Guillard
+                Château Guillard Halloween
+                Ecopoint: Antarctica
+                Ecopoint: Antarctica Winter
+                Necropolis
+                Petra
+                Workshop Chamber
+                Workshop Expanse
+                Workshop Island
+            }
+        }
+
+        disabled Elimination
+        {
+            Score To Win: 1
+        }
+
+        General
+        {
+            Game Mode Start: Immediately
+            Spawn Health Packs: Disabled
+        }
+    }
+
+    heroes
+    {
+        General
+        {
+            Ultimate Ability: Off
+
+            Baptiste
+            {
+                Immortality Field: Off
+            }
+
+            Symmetra
+            {
+                Sentry Turret: Off
+            }
+
+            Torbjörn
+            {
+                Deploy Turret: Off
+            }
+
+            disabled heroes
+            {
+                Bastion
+                Brigitte
+                D.Va
+                Moira
+                Orisa
+                Reinhardt
+                Roadhog
+                Sigma
+                Winston
+                Wrecking Ball
+                Zarya
+            }
+        }
+    }
+}
+
+
+
+variables
+{
+    global:
+        0: score_to_win
+        1: spawn_radius_min
+        2: spawn_radius_max
+        3: out_of_bounds_arr
+            //[i][0] = sphere center
+            //[i][1] = sphere radius
+
+    player:
+        0: opponent_arr
+            //[0] = most recent opponent
+            //[1] = score of most recent opponent
+            //[2] = hero of most recent opponent
+        1: round_history_arr
+            //[i][0] = round result
+            //[i][1] = hero of player
+            //[i][2] = hero of opponent
+            //[i][3] = score of player
+            //[i][4] = score of opponent
+            //[i][5] = opponent username
+        2: round_result // loss = 1, win = 2, incomplete = 3, rest = 0
+        3: latest_hero
+        4: smart_respawn_flag // only used as a flag
+        5: proposed_spawn
+        6: refresh_flag // trigger = 999, rest = 0, also used as a flag
+        7: opponent_pos_tmp
+        8: print_round_history_i
+        9: print_round_module_params_arr
+            //[0] = trigger = 999, rest = 0
+            //[1] = index in round_history_arr
+            //[2] = whether or not to print a blank line
+        10: teleport_module_params_arr
+            //[0] = trigger = 999, rest = 0, also used as a flag
+            //[1] = teleport destination
+            //[2] = exit facing direction; if 0, the player will be set to face towards the opponent
+            //[3] = exit velocity
+}
+
+
+
+disabled rule("For hosts")
+{
+    event
+    {
+        Ongoing - Global;
+    }
+}
+
+
+
+rule("Settings")
+{
+    event
+    {
+        Ongoing - Global;
+    }
+
+    actions
+    {
+        Set Global Variable(score_to_win, 15);
+        Set Global Variable(spawn_radius_min, 35);
+        Set Global Variable(spawn_radius_max, 45);
+    }
+}
+
+
+
+disabled rule("Housekeeping")
+{
+    event
+    {
+        Ongoing - Global;
+    }
+}
+
+
+
+rule("Initialise global entities")
+{
+    event
+    {
+        Ongoing - Global;
+    }
+
+    actions
+    {
+        Create HUD Text(
+            All Players(All Teams),
+            Null,
+            Custom String(
+                "Swap heroes: ult (might take multiple tries to get to the correct screen)",
+                Null,
+                Null,
+                Null
+            ),
+            Null,
+            Left,
+            1,
+            White,
+            White,
+            White,
+            Visible To and String,
+            Visible Always
+        );
+        Create HUD Text(
+            All Players(All Teams),
+            Null,
+            Custom String(
+                "Show round history: crouch + interact",
+                Null,
+                Null,
+                Null
+            ),
+            Null,
+            Left,
+            2,
+            White,
+            White,
+            White,
+            Visible To and String,
+            Visible Always
+        );
+        Create HUD Text(
+            All Players(All Teams),
+            Null,
+            Custom String(
+                "First to {0}",
+                Global Variable(score_to_win),
+                Null,
+                Null
+            ),
+            Null,
+            Top,
+            -1,
+            White,
+            White,
+            White,
+            Visible To and String,
+            Visible Always
+        );
+    }
+}
+
+
+
+rule("Initialise player variables")
+{
+    event
+    {
+        Ongoing - Each Player;
+        All;
+        All;
+    }
+
+    conditions
+    {
+        Player Variable(Event Player, round_history_arr) == Null;
+    }
+
+    actions
+    {
+        Set Player Variable(Event Player, round_history_arr, Empty Array);
+        Set Player Variable(
+            Event Player,
+            opponent_arr,
+            Append To Array(
+                Append To Array(Append To Array(Empty Array, Null), 0),
+                Null
+            )
+        );
+        Set Player Variable(
+            Event Player,
+            print_round_module_params_arr,
+            Append To Array(
+                Append To Array(Append To Array(Empty Array, 0), 0),
+                False
+            )
+        );
+        Set Player Variable(
+            Event Player,
+            teleport_module_params_arr,
+            Append To Array(
+                Append To Array(
+                    Append To Array(
+                        Append To Array(Empty Array, 0),
+                        Vector(0, 0, 0)
+                    ),
+                    Vector(0, 0, 0)
+                ),
+                Vector(0, 0, 0)
+            )
+        );
+    }
+}
+
+
+
+rule("Initialise 'out_of_bounds_arr'")
+{
+    event
+    {
+        Ongoing - Global;
+    }
+
+    actions
+    {
+        Set Global Variable(out_of_bounds_arr, Empty Array);
+        If(
+            Or(
+                Compare(Current Map, ==, Map(Blizzard World)),
+                Compare(Current Map, ==, Map(Blizzard World Winter))
+            )
+        );
+            Set Global Variable At Index(
+                out_of_bounds_arr,
+                Count Of(Global Variable(out_of_bounds_arr)),
+                Append To Array(
+                    Append To Array(
+                        Empty Array,
+                        Vector(-127.570, -2.780, 120.950)
+                    ),
+                    49.600
+                )
+            );
+            Set Global Variable At Index(
+                out_of_bounds_arr,
+                Count Of(Global Variable(out_of_bounds_arr)),
+                Append To Array(
+                    Append To Array(
+                        Empty Array,
+                        Vector(-100.640, 0.050, 136.870)
+                    ),
+                    25.100
+                )
+            );
+            Set Global Variable At Index(
+                out_of_bounds_arr,
+                Count Of(Global Variable(out_of_bounds_arr)),
+                Append To Array(
+                    Append To Array(
+                        Empty Array,
+                        Vector(-82.510, -0.670, 170.520)
+                    ),
+                    17.700
+                )
+            );
+            Set Global Variable At Index(
+                out_of_bounds_arr,
+                Count Of(Global Variable(out_of_bounds_arr)),
+                Append To Array(
+                    Append To Array(
+                        Empty Array,
+                        Vector(19.990, 12.880, 55.460)
+                    ),
+                    38.50
+                )
+            );
+            Set Global Variable At Index(
+                out_of_bounds_arr,
+                Count Of(Global Variable(out_of_bounds_arr)),
+                Append To Array(
+                    Append To Array(Empty Array, Vector(33.210, 1.870, 86.430)),
+                    47.400
+                )
+            );
+            Set Global Variable At Index(
+                out_of_bounds_arr,
+                Count Of(Global Variable(out_of_bounds_arr)),
+                Append To Array(
+                    Append To Array(Empty Array, Vector(2.470, 5.820, 116.300)),
+                    25.100
+                )
+            );
+        Else If(Compare(Current Map, ==, Map(Dorado)));
+            Set Global Variable At Index(
+                out_of_bounds_arr,
+                Count Of(Global Variable(out_of_bounds_arr)),
+                Append To Array(
+                    Append To Array(
+                        Empty Array,
+                        Vector(18.060, 16.080, -45.890)
+                    ),
+                    79.900
+                )
+            );
+            Set Global Variable At Index(
+                out_of_bounds_arr,
+                Count Of(Global Variable(out_of_bounds_arr)),
+                Append To Array(
+                    Append To Array(
+                        Empty Array,
+                        Vector(172.240, 18.300, 55.450)
+                    ),
+                    33.900
+                )
+            );
+            Set Global Variable At Index(
+                out_of_bounds_arr,
+                Count Of(Global Variable(out_of_bounds_arr)),
+                Append To Array(
+                    Append To Array(Empty Array, Vector(151.210, 15, 31.680)),
+                    16.800
+                )
+            );
+            Set Global Variable At Index(
+                out_of_bounds_arr,
+                Count Of(Global Variable(out_of_bounds_arr)),
+                Append To Array(
+                    Append To Array(
+                        Empty Array,
+                        Vector(176.490, 13.540, 16.540)
+                    ),
+                    20.700
+                )
+            );
+        Else If(
+            Or(
+                Compare(Current Map, ==, Map(Eichenwalde)),
+                Compare(Current Map, ==, Map(Eichenwalde Halloween))
+            )
+        );
+            Set Global Variable At Index(
+                out_of_bounds_arr,
+                Count Of(Global Variable(out_of_bounds_arr)),
+                Append To Array(
+                    Append To Array(
+                        Empty Array,
+                        Vector(-25.860, 32.770, -44.980)
+                    ),
+                    69.300
+                )
+            );
+            Set Global Variable At Index(
+                out_of_bounds_arr,
+                Count Of(Global Variable(out_of_bounds_arr)),
+                Append To Array(
+                    Append To Array(
+                        Empty Array,
+                        Vector(11.920, 12.620, -89.790)
+                    ),
+                    16.700
+                )
+            );
+            Set Global Variable At Index(
+                out_of_bounds_arr,
+                Count Of(Global Variable(out_of_bounds_arr)),
+                Append To Array(
+                    Append To Array(
+                        Empty Array,
+                        Vector(103.440, 22.080, -8.230)
+                    ),
+                    63.900
+                )
+            );
+        Else If(
+            Or(
+                Compare(Current Map, ==, Map(Hanamura)),
+                Compare(Current Map, ==, Map(Hanamura Winter))
+            )
+        );
+            Set Global Variable At Index(
+                out_of_bounds_arr,
+                Count Of(Global Variable(out_of_bounds_arr)),
+                Append To Array(
+                    Append To Array(Empty Array, Vector(66.170, 1.020, 0.380)),
+                    40.800
+                )
+            );
+            Set Global Variable At Index(
+                out_of_bounds_arr,
+                Count Of(Global Variable(out_of_bounds_arr)),
+                Append To Array(
+                    Append To Array(
+                        Empty Array,
+                        Vector(65.220, 17.110, 35.890)
+                    ),
+                    47.100
+                )
+            );
+            Set Global Variable At Index(
+                out_of_bounds_arr,
+                Count Of(Global Variable(out_of_bounds_arr)),
+                Append To Array(
+                    Append To Array(
+                        Empty Array,
+                        Vector(-47.860, 1.160, -109.790)
+                    ),
+                    29.500
+                )
+            );
+            Set Global Variable At Index(
+                out_of_bounds_arr,
+                Count Of(Global Variable(out_of_bounds_arr)),
+                Append To Array(
+                    Append To Array(
+                        Empty Array,
+                        Vector(-15.370, -4.500, 18.220)
+                    ),
+                    8.100
+                )
+            );
+            Set Global Variable At Index(
+                out_of_bounds_arr,
+                Count Of(Global Variable(out_of_bounds_arr)),
+                Append To Array(
+                    Append To Array(
+                        Empty Array,
+                        Vector(15.330, -7.500, 17.680)
+                    ),
+                    10
+                )
+            );
+        Else If(Compare(Current Map, ==, Map(Havana)));
+            Set Global Variable At Index(
+                out_of_bounds_arr,
+                Count Of(Global Variable(out_of_bounds_arr)),
+                Append To Array(
+                    Append To Array(
+                        Empty Array,
+                        Vector(-45.180, 5.930, -105.480)
+                    ),
+                    52
+                )
+            );
+            Set Global Variable At Index(
+                out_of_bounds_arr,
+                Count Of(Global Variable(out_of_bounds_arr)),
+                Append To Array(
+                    Append To Array(
+                        Empty Array,
+                        Vector(-33.930, 5.960, -36.840)
+                    ),
+                    51
+                )
+            );
+            Set Global Variable At Index(
+                out_of_bounds_arr,
+                Count Of(Global Variable(out_of_bounds_arr)),
+                Append To Array(
+                    Append To Array(
+                        Empty Array,
+                        Vector(28.930, 23.180, 13.040)
+                    ),
+                    75
+                )
+            );
+            Set Global Variable At Index(
+                out_of_bounds_arr,
+                Count Of(Global Variable(out_of_bounds_arr)),
+                Append To Array(
+                    Append To Array(
+                        Empty Array,
+                        Vector(-14.950, 6.150, -46.440)
+                    ),
+                    23.3
+                )
+            );
+            Set Global Variable At Index(
+                out_of_bounds_arr,
+                Count Of(Global Variable(out_of_bounds_arr)),
+                Append To Array(
+                    Append To Array(
+                        Empty Array,
+                        Vector(104.880, 3.280, -120.960)
+                    ),
+                    43.4
+                )
+            );
+            Set Global Variable At Index(
+                out_of_bounds_arr,
+                Count Of(Global Variable(out_of_bounds_arr)),
+                Append To Array(
+                    Append To Array(
+                        Empty Array,
+                        Vector(107.480, 25.140, -81.690)
+                    ),
+                    44.8
+                )
+            );
+            Set Global Variable At Index(
+                out_of_bounds_arr,
+                Count Of(Global Variable(out_of_bounds_arr)),
+                Append To Array(
+                    Append To Array(
+                        Empty Array,
+                        Vector(88.740, 12.110, -32.840)
+                    ),
+                    40.5
+                )
+            );
+        Else If(
+            Or(
+                Compare(Current Map, ==, Map(Hollywood)),
+                Compare(Current Map, ==, Map(Hollywood Halloween))
+            )
+        );
+            Set Global Variable At Index(
+                out_of_bounds_arr,
+                Count Of(Global Variable(out_of_bounds_arr)),
+                Append To Array(
+                    Append To Array(
+                        Empty Array,
+                        Vector(-14.460, 2.270, -141.760)
+                    ),
+                    63.3
+                )
+            );
+            Set Global Variable At Index(
+                out_of_bounds_arr,
+                Count Of(Global Variable(out_of_bounds_arr)),
+                Append To Array(
+                    Append To Array(
+                        Empty Array,
+                        Vector(-25.370, 25.820, 57.110)
+                    ),
+                    72.9
+                )
+            );
+            Set Global Variable At Index(
+                out_of_bounds_arr,
+                Count Of(Global Variable(out_of_bounds_arr)),
+                Append To Array(
+                    Append To Array(
+                        Empty Array,
+                        Vector(-17.990, 2.040, -14.570)
+                    ),
+                    9.800
+                )
+            );
+        Else If(Compare(Current Map, ==, Map(Horizon Lunar Colony)));
+            Set Global Variable At Index(
+                out_of_bounds_arr,
+                Count Of(Global Variable(out_of_bounds_arr)),
+                Append To Array(
+                    Append To Array(
+                        Empty Array,
+                        Vector(23.060, 13.800, -17.940)
+                    ),
+                    43.600
+                )
+            );
+            Set Global Variable At Index(
+                out_of_bounds_arr,
+                Count Of(Global Variable(out_of_bounds_arr)),
+                Append To Array(
+                    Append To Array(
+                        Empty Array,
+                        Vector(-53.570, 5.030, -173.950)
+                    ),
+                    37.800
+                )
+            );
+        Else If(
+            Or(
+                Compare(Current Map, ==, Map(King's Row)),
+                Compare(Current Map, ==, Map(King's Row Winter))
+            )
+        );
+            Set Global Variable At Index(
+                out_of_bounds_arr,
+                Count Of(Global Variable(out_of_bounds_arr)),
+                Append To Array(
+                    Append To Array(
+                        Empty Array,
+                        Vector(43.190, 8.320, -21.350)
+                    ),
+                    79
+                )
+            );
+            Set Global Variable At Index(
+                out_of_bounds_arr,
+                Count Of(Global Variable(out_of_bounds_arr)),
+                Append To Array(
+                    Append To Array(
+                        Empty Array,
+                        Vector(-162.990, -2.140, 27.360)
+                    ),
+                    71
+                )
+            );
+            Set Global Variable At Index(
+                out_of_bounds_arr,
+                Count Of(Global Variable(out_of_bounds_arr)),
+                Append To Array(
+                    Append To Array(
+                        Empty Array,
+                        Vector(-125.97, -11.75, -59.44)
+                    ),
+                    34.60
+                )
+            );
+        Else If(Compare(Current Map, ==, Map(Paris)));
+            Set Global Variable At Index(
+                out_of_bounds_arr,
+                Count Of(Global Variable(out_of_bounds_arr)),
+                Append To Array(
+                    Append To Array(
+                        Empty Array,
+                        Vector(-53.770, 12.030, 12.180)
+                    ),
+                    44.600
+                )
+            );
+            Set Global Variable At Index(
+                out_of_bounds_arr,
+                Count Of(Global Variable(out_of_bounds_arr)),
+                Append To Array(
+                    Append To Array(
+                        Empty Array,
+                        Vector(-3.130, 14.820, -27.410)
+                    ),
+                    54.200
+                )
+            );
+            Set Global Variable At Index(
+                out_of_bounds_arr,
+                Count Of(Global Variable(out_of_bounds_arr)),
+                Append To Array(
+                    Append To Array(
+                        Empty Array,
+                        Vector(-118.380, 15.900, -129.200)
+                    ),
+                    33.800
+                )
+            );
+        Else If(Compare(Current Map, ==, Map(Temple of Anubis)));
+            Set Global Variable At Index(
+                out_of_bounds_arr,
+                Count Of(Global Variable(out_of_bounds_arr)),
+                Append To Array(
+                    Append To Array(
+                        Empty Array,
+                        Vector(-8.460, 7.020, 150.220)
+                    ),
+                    26.600
+                )
+            );
+            Set Global Variable At Index(
+                out_of_bounds_arr,
+                Count Of(Global Variable(out_of_bounds_arr)),
+                Append To Array(
+                    Append To Array(
+                        Empty Array,
+                        Vector(18.690, 17.980, -37.000)
+                    ),
+                    64
+                )
+            );
+            Set Global Variable At Index(
+                out_of_bounds_arr,
+                Count Of(Global Variable(out_of_bounds_arr)),
+                Append To Array(
+                    Append To Array(
+                        Empty Array,
+                        Vector(-51.340, 1.830, 29.660)
+                    ),
+                    8.600
+                )
+            );
+        Else If(Compare(Current Map, ==, Map(Volskaya Industries)));
+            Set Global Variable At Index(
+                out_of_bounds_arr,
+                Count Of(Global Variable(out_of_bounds_arr)),
+                Append To Array(
+                    Append To Array(
+                        Empty Array,
+                        Vector(-125.510, -0.720, 18.290)
+                    ),
+                    25.100
+                )
+            );
+            Set Global Variable At Index(
+                out_of_bounds_arr,
+                Count Of(Global Variable(out_of_bounds_arr)),
+                Append To Array(
+                    Append To Array(
+                        Empty Array,
+                        Vector(-136.650, -0.110, 41.500)
+                    ),
+                    8.900
+                )
+            );
+            Set Global Variable At Index(
+                out_of_bounds_arr,
+                Count Of(Global Variable(out_of_bounds_arr)),
+                Append To Array(
+                    Append To Array(
+                        Empty Array,
+                        Vector(-6.820, -3.550, 19.030)
+                    ),
+                    36.400
+                )
+            );
+            Set Global Variable At Index(
+                out_of_bounds_arr,
+                Count Of(Global Variable(out_of_bounds_arr)),
+                Append To Array(
+                    Append To Array(
+                        Empty Array,
+                        Vector(10.800, 17.180, 38.330)
+                    ),
+                    26.900
+                )
+            );
+            Set Global Variable At Index(
+                out_of_bounds_arr,
+                Count Of(Global Variable(out_of_bounds_arr)),
+                Append To Array(
+                    Append To Array(Empty Array, Vector(-21.67, -4.58, 15.67)),
+                    38.60
+                )
+            );
+            Set Global Variable At Index(
+                out_of_bounds_arr,
+                Count Of(Global Variable(out_of_bounds_arr)),
+                Append To Array(
+                    Append To Array(Empty Array, Vector(28.51, 24.18, 75.50)),
+                    28.70
+                )
+            );
+        End;
+    }
+}
+
+
+
+rule("Update 'opponent_arr'")
+{
+    event
+    {
+        Ongoing - Each Player;
+        All;
+        All;
+    }
+
+    conditions
+    {
+        "There is an opponent but opponent_arr[0] suggests there isn't, or there is an opponent but opponent_arr[1] and/or opponent_arr[2] is inaccurate"
+        Or(
+            And(
+                Compare(
+                    Remove From Array(All Players(All Teams), Event Player),
+                    !=,
+                    Empty Array
+                ),
+                Not(
+                    Entity Exists(
+                        Value In Array(
+                            Player Variable(Event Player, opponent_arr),
+                            0
+                        )
+                    )
+                )
+            ),
+            And(
+                Entity Exists(
+                    Value In Array(
+                        Player Variable(Event Player, opponent_arr),
+                        0
+                    )
+                ),
+                Or(
+                    Compare(
+                        Value In Array(
+                            Player Variable(Event Player, opponent_arr),
+                            1
+                        ),
+                        !=,
+                        Score Of(
+                            Value In Array(
+                                Player Variable(Event Player, opponent_arr),
+                                0
+                            )
+                        )
+                    ),
+                    Compare(
+                        Value In Array(
+                            Player Variable(Event Player, opponent_arr),
+                            2
+                        ),
+                        !=,
+                        Hero Of(
+                            Value In Array(
+                                Player Variable(Event Player, opponent_arr),
+                                0
+                            )
+                        )
+                    )
+                )
+            )
+        ) == True;
+    }
+
+    actions
+    {
+        Set Player Variable At Index(
+            Event Player,
+            opponent_arr,
+            0,
+            Filtered Array(
+                All Players(All Teams),
+                Compare(Current Array Element, !=, Event Player)
+            )
+        );
+        Set Player Variable At Index(
+            Event Player,
+            opponent_arr,
+            1,
+            Score Of(
+                Value In Array(Player Variable(Event Player, opponent_arr), 0)
+            )
+        );
+        Set Player Variable At Index(
+            Event Player,
+            opponent_arr,
+            2,
+            Hero Of(
+                Value In Array(Player Variable(Event Player, opponent_arr), 0)
+            )
+        );
+    }
+}
+
+
+
+rule("Skip assembly")
+{
+    event
+    {
+        Ongoing - Global;
+    }
+
+    conditions
+    {
+        Is Assembling Heroes == True;
+    }
+
+    actions
+    {
+        Set Match Time(0);
+    }
+}
+
+
+
+rule("Disable")
+{
+    event
+    {
+        Ongoing - Global;
+    }
+
+    conditions
+    {
+        Is Game In Progress == True;
+    }
+
+    actions
+    {
+        Disable Inspector Recording;
+        Disable Built-In Game Mode Completion;
+        Disable Built-In Game Mode Announcer;
+        Disable Built-In Game Mode Scoring;
+        Set Match Time(0);
+    }
+}
+
+
+
+disabled rule("Core")
+{
+    event
+    {
+        Ongoing - Global;
+    }
+}
+
+
+
+rule("Scoring")
+{
+    event
+    {
+        Player Died;
+        All;
+        All;
+    }
+
+    conditions
+    {
+        Entity Exists(
+            Value In Array(Player Variable(Event Player, opponent_arr), 0)
+        ) == True;
+    }
+
+    actions
+    {
+        If(Compare(Victim, ==, Attacker));
+            Modify Player Score(Victim, -1.000);
+        Else;
+            Modify Player Score(Attacker, 1);
+        End;
+    }
+}
+
+
+
+rule("Show health remaining")
+{
+    event
+    {
+        Player Died;
+        All;
+        All;
+    }
+
+    conditions
+    {
+        Entity Exists(
+            Value In Array(Player Variable(Event Player, opponent_arr), 0)
+        ) == True;
+    }
+
+    actions
+    {
+        Small Message(
+            Event Player,
+            Custom String(
+                "Your opponent had {0} ({1}%) health remaining",
+                Health(
+                    Value In Array(
+                        Player Variable(Event Player, opponent_arr),
+                        0
+                    )
+                ),
+                Multiply(
+                    Normalized Health(
+                        Value In Array(
+                            Player Variable(Event Player, opponent_arr),
+                            0
+                        )
+                    ),
+                    100
+                ),
+                Null
+            )
+        );
+    }
+}
+
+
+
+rule("Instant respawn")
+{
+    event
+    {
+        Player Died;
+        All;
+        All;
+    }
+
+    actions
+    {
+        Respawn(Event Player);
+    }
+}
+
+
+
+rule("Smart respawn pt1")
+{
+    event
+    {
+        Ongoing - Each Player;
+        All;
+        All;
+    }
+
+    conditions
+    {
+        Has Spawned(Event Player) == True;
+        Is Alive(Event Player) == True;
+    }
+
+    actions
+    {
+        "Exit cases"
+        Abort If(
+            Not(
+                Entity Exists(
+                    Value In Array(
+                        Player Variable(Event Player, opponent_arr),
+                        0
+                    )
+                )
+            )
+        );
+        Abort If(
+            Not(
+                Has Spawned(
+                    Value In Array(
+                        Player Variable(Event Player, opponent_arr),
+                        0
+                    )
+                )
+            )
+        );
+        Abort If(
+            Not(
+                Is Alive(
+                    Value In Array(
+                        Player Variable(Event Player, opponent_arr),
+                        0
+                    )
+                )
+            )
+        );
+
+        "Store the opponent's position"
+        Set Player Variable(
+            Event Player,
+            opponent_pos_tmp,
+            Position Of(
+                Value In Array(Player Variable(Event Player, opponent_arr), 0)
+            )
+        );
+
+        "Trigger refresh for the opponent"
+        Set Player Variable(
+            Value In Array(Player Variable(Event Player, opponent_arr), 0),
+            refresh_flag,
+            999
+        );
+        Set Player Variable(Event Player, smart_respawn_flag, 1);
+    }
+}
+
+
+
+rule("Smart respawn pt2")
+{
+    event
+    {
+        Ongoing - Each Player;
+        All;
+        All;
+    }
+
+    conditions
+    {
+        Player Variable(Event Player, smart_respawn_flag) == 1;
+
+        "Wait for teleport module to be free"
+        Value In Array(
+            Player Variable(Event Player, teleport_module_params_arr),
+            0
+        ) == 0;
+    }
+
+    actions
+    {
+        "Generate spawns until one is found that's at a good distance and isn't out of bounds"
+        Set Player Variable(
+            Event Player,
+            proposed_spawn,
+            Nearest Walkable Position(
+                Add(
+                    Player Variable(Event Player, opponent_pos_tmp),
+                    Multiply(
+                        Random Real(
+                            Global Variable(spawn_radius_min),
+                            Global Variable(spawn_radius_max)
+                        ),
+                        Normalize(
+                            Vector(
+                                Random Real(-1.000, 1),
+                                Random Real(-1.000, 1),
+                                Random Real(-1.000, 1)
+                            )
+                        )
+                    )
+                )
+            )
+        );
+        Loop If(
+            Or(
+                Or(
+                    Compare(
+                        Distance Between(
+                            Player Variable(Event Player, opponent_pos_tmp),
+                            Player Variable(Event Player, proposed_spawn)
+                        ),
+                        <,
+                        Global Variable(spawn_radius_min)
+                    ),
+                    Compare(
+                        Distance Between(
+                            Player Variable(Event Player, opponent_pos_tmp),
+                            Player Variable(Event Player, proposed_spawn)
+                        ),
+                        >,
+                        Global Variable(spawn_radius_max)
+                    )
+                ),
+                Compare(
+                    Filtered Array(
+                        Global Variable(out_of_bounds_arr),
+                        Compare(
+                            Distance Between(
+                                Player Variable(Event Player, proposed_spawn),
+                                Value In Array(Current Array Element, 0)
+                            ),
+                            <=,
+                            Value In Array(Current Array Element, 1)
+                        )
+                    ),
+                    !=,
+                    Empty Array
+                )
+            )
+        );
+        Set Player Variable(
+            Event Player,
+            teleport_module_params_arr,
+            Append To Array(
+                Append To Array(
+                    Append To Array(
+                        Append To Array(Empty Array, 999),
+                        Player Variable(Event Player, proposed_spawn)
+                    ),
+                    0
+                ),
+                0
+            )
+        );
+        Set Player Variable(Event Player, smart_respawn_flag, 0);
+    }
+}
+
+
+
+rule("Refresh pt1")
+{
+    event
+    {
+        Ongoing - Each Player;
+        All;
+        All;
+    }
+
+    conditions
+    {
+        Player Variable(Event Player, refresh_flag) == 999;
+    }
+
+    actions
+    {
+        If(And(Has Spawned(Event Player), Is Alive(Event Player)));
+            Set Player Variable(Event Player, refresh_flag, 1);
+        Else;
+            Set Player Variable(Event Player, refresh_flag, 0);
+        End;
+    }
+}
+
+
+
+rule("Refresh pt2")
+{
+    event
+    {
+        Ongoing - Each Player;
+        All;
+        All;
+    }
+
+    conditions
+    {
+        Player Variable(Event Player, refresh_flag) == 1;
+
+        "Wait for teleport module to be free"
+        Value In Array(
+            Player Variable(Event Player, teleport_module_params_arr),
+            0
+        ) == 0;
+    }
+
+    actions
+    {
+        Set Player Variable(
+            Event Player,
+            teleport_module_params_arr,
+            Append To Array(
+                Append To Array(
+                    Append To Array(
+                        Append To Array(Empty Array, 999),
+                        Position Of(Event Player)
+                    ),
+                    Facing Direction Of(Event Player)
+                ),
+                Velocity Of(Event Player)
+            )
+        );
+        Respawn(Event Player);
+        Set Player Variable(Event Player, refresh_flag, 0);
+    }
+}
+
+
+
+rule("Respite")
+{
+    event
+    {
+        Ongoing - Each Player;
+        All;
+        All;
+    }
+
+    conditions
+    {
+        Has Spawned(Event Player) == True;
+        Is Alive(Event Player) == True;
+    }
+
+    actions
+    {
+        "Avoid stacking respites"
+        Abort If(Has Status(Event Player, Invincible));
+        Set Status(Event Player, Null, Invincible, 2);
+        Set Status(
+            Value In Array(Player Variable(Event Player, opponent_arr), 0),
+            Null,
+            Invincible,
+            2
+        );
+        Start Heal Over Time(All Players(All Teams), Null, 2, 999);
+        Create Effect(
+            Value In Array(Player Variable(Event Player, opponent_arr), 0),
+            Good Aura,
+            Yellow,
+            Event Player,
+            0.500,
+            Visible To Position and Radius
+        );
+        Create Effect(
+            Event Player,
+            Good Aura,
+            Yellow,
+            Value In Array(Player Variable(Event Player, opponent_arr), 0),
+            0.500,
+            Visible To Position and Radius
+        );
+        Wait(2, Ignore Condition);
+        Destroy All Effects;
+    }
+}
+
+
+
+rule("Hero select")
+{
+    event
+    {
+        Ongoing - Each Player;
+        All;
+        All;
+    }
+
+    conditions
+    {
+        Is Button Held(Event Player, Ultimate) == True;
+        Is Alive(Event Player) == True;
+    }
+
+    actions
+    {
+        "Only subtract a point if the player isn't at full health and has an opponent"
+        If(
+            And(
+                Compare(Normalized Health(Event Player), !=, 1),
+                Entity Exists(
+                    Value In Array(
+                        Player Variable(Event Player, opponent_arr),
+                        0
+                    )
+                )
+            )
+        );
+            Modify Player Score(Event Player, -1.000);
+        End;
+
+        "Credit: Beemoo's aim arena"
+        Set Player Allowed Heroes(
+            Event Player,
+            Remove From Array(
+                Allowed Heroes(Event Player),
+                Hero Of(Event Player)
+            )
+        );
+        Wait(0.200, Ignore Condition);
+        Reset Player Hero Availability(Event Player);
+    }
+}
+
+
+
+rule("Hero change message")
+{
+    event
+    {
+        Ongoing - Each Player;
+        All;
+        All;
+    }
+
+    conditions
+    {
+        Hero Of(Event Player) != Player Variable(Event Player, latest_hero);
+        Hero Of(Event Player) == True;
+    }
+
+    actions
+    {
+        Small Message(
+            Value In Array(Player Variable(Event Player, opponent_arr), 0),
+            Custom String(
+                "{0} {1} -> {2}",
+                Event Player,
+                Hero Icon String(Player Variable(Event Player, latest_hero)),
+                Hero Icon String(Hero Of(Event Player))
+            )
+        );
+
+        "Avoid race condition with Set Player Variable executing before Small Message"
+        Wait(0.100, Ignore Condition);
+        Set Player Variable(Event Player, latest_hero, Hero Of(Event Player));
+    }
+}
+
+
+
+rule("Player join sound")
+{
+    event
+    {
+        Ongoing - Each Player;
+        All;
+        All;
+    }
+
+    conditions
+    {
+        Number of Players(All Teams) == 2;
+    }
+
+    actions
+    {
+        Play Effect(
+            Event Player,
+            Ring Explosion Sound,
+            White,
+            Event Player,
+            100
+        );
+        Play Effect(
+            Event Player,
+            Ring Explosion Sound,
+            White,
+            Event Player,
+            50
+        );
+    }
+}
+
+
+
+disabled rule("Bookkeeping")
+{
+    event
+    {
+        Ongoing - Global;
+    }
+}
+
+
+
+rule("Round evaluation")
+{
+    event
+    {
+        Ongoing - Each Player;
+        All;
+        All;
+    }
+
+    conditions
+    {
+        Player Variable(Event Player, round_result) == 0;
+
+        "The player's score must be greater than the score limit, or they must not have an opponent and the player and/or their latest opponent must have a non-zero score"
+        Or(
+            Compare(Score Of(Event Player), >=, Global Variable(score_to_win)),
+            And(
+                Not(
+                    Entity Exists(
+                        Value In Array(
+                            Player Variable(Event Player, opponent_arr),
+                            0
+                        )
+                    )
+                ),
+                Or(
+                    Compare(Score Of(Event Player), !=, 0),
+                    Compare(
+                        Value In Array(
+                            Player Variable(Event Player, opponent_arr),
+                            1
+                        ),
+                        !=,
+                        0
+                    )
+                )
+            )
+        ) == True;
+        Is Game In Progress == True;
+    }
+
+    actions
+    {
+        "This wait handles the case where a round ends as the previous one is ending, which should not be possible in practice, by waiting for the next tick to ensure round reset is called again."
+        Wait(0.016, Ignore Condition);
+        If(
+            Entity Exists(
+                Value In Array(Player Variable(Event Player, opponent_arr), 0)
+            )
+        );
+            Set Player Variable(Event Player, round_result, 2);
+            Set Player Variable(
+                Value In Array(Player Variable(Event Player, opponent_arr), 0),
+                round_result,
+                1
+            );
+        Else;
+            Set Player Variable(Event Player, round_result, 3);
+        End;
+    }
+}
+
+
+
+rule("Round reset")
+{
+    event
+    {
+        Ongoing - Each Player;
+        All;
+        All;
+    }
+
+    conditions
+    {
+        Player Variable(Event Player, round_result) != 0;
+    }
+
+    actions
+    {
+        "Record this round's info in round_history_arr"
+        Set Player Variable At Index(
+            Event Player,
+            round_history_arr,
+            Count Of(Player Variable(Event Player, round_history_arr)),
+            Append To Array(
+                Append To Array(
+                    Append To Array(
+                        Append To Array(
+                            Append To Array(
+                                Append To Array(
+                                    Empty Array,
+                                    Player Variable(Event Player, round_result)
+                                ),
+                                Hero Of(Event Player)
+                            ),
+                            Value In Array(
+                                Player Variable(Event Player, opponent_arr),
+                                2
+                            )
+                        ),
+                        Score Of(Event Player)
+                    ),
+                    Value In Array(
+                        Player Variable(Event Player, opponent_arr),
+                        1
+                    )
+                ),
+                Value In Array(Player Variable(Event Player, opponent_arr), 0)
+            )
+        );
+
+        "Print result"
+        If(Compare(Player Variable(Event Player, round_result), ==, 3));
+            Big Message(
+                Event Player,
+                Custom String("Enemy disconnected", Null, Null, Null)
+            );
+        Else;
+            Big Message(
+                Event Player,
+                Custom String(
+                    "{0}:{1}",
+                    Value In Array(
+                        Value In Array(
+                            Player Variable(Event Player, round_history_arr),
+                            Subtract(
+                                Count Of(
+                                    Player Variable(
+                                        Event Player,
+                                        round_history_arr
+                                    )
+                                ),
+                                1
+                            )
+                        ),
+                        3
+                    ),
+                    Value In Array(
+                        Value In Array(
+                            Player Variable(Event Player, round_history_arr),
+                            Subtract(
+                                Count Of(
+                                    Player Variable(
+                                        Event Player,
+                                        round_history_arr
+                                    )
+                                ),
+                                1
+                            )
+                        ),
+                        4
+                    ),
+                    Null
+                )
+            );
+        End;
+        Set Player Variable(
+            Event Player,
+            print_round_module_params_arr,
+            Append To Array(
+                Append To Array(
+                    Append To Array(Empty Array, 999),
+                    Subtract(
+                        Count Of(
+                            Player Variable(Event Player, round_history_arr)
+                        ),
+                        1
+                    )
+                ),
+                True
+            )
+        );
+
+        "Wait for the opponent's round reset before resetting score"
+        Wait(0.100, Ignore Condition);
+        Set Player Score(Event Player, 0);
+
+        "Prevents the round resetting again due to an uncleared score of a disconnected enemy"
+        Set Player Variable At Index(Event Player, opponent_arr, 1, 0);
+
+        "Ensure the upcoming hero swap, triggered by pressing ult, doesn't deduct a point"
+        Set Status(Event Player, Null, Invincible, 999);
+        Heal(Event Player, Null, 999);
+
+        "Cinematic camera"
+        Start Camera(
+            Event Player,
+            Add(Eye Position(Event Player), Vector(0, 150, 0)),
+            Add(
+                Eye Position(Event Player),
+                Vector(
+                    X Component Of(Facing Direction Of(Event Player)),
+                    150,
+                    0
+                )
+            ),
+            0.010
+        );
+        Wait(3, Ignore Condition);
+        Stop Camera(Event Player);
+
+        "Trigger hero select"
+        Press Button(Event Player, Ultimate);
+        Clear Status(Event Player, Invincible);
+        Set Player Variable(Event Player, round_result, 0);
+    }
+}
+
+
+
+rule("Print round history")
+{
+    event
+    {
+        Ongoing - Each Player;
+        All;
+        All;
+    }
+
+    conditions
+    {
+        Is Button Held(Event Player, Crouch) == True;
+        Is Button Held(Event Player, Interact) == True;
+        Player Variable(Event Player, print_round_history_i) == 0;
+        Count Of(Player Variable(Event Player, round_history_arr)) >= 1;
+    }
+
+    actions
+    {
+        For Player Variable(
+            Event Player,
+            print_round_history_i,
+            0,
+            Count Of(Player Variable(Event Player, round_history_arr)),
+            1
+        );
+            Set Player Variable(
+                Event Player,
+                print_round_module_params_arr,
+                Append To Array(
+                    Append To Array(
+                        Append To Array(Empty Array, 999),
+                        Player Variable(Event Player, print_round_history_i)
+                    ),
+                    Compare(
+                        Player Variable(Event Player, print_round_history_i),
+                        !=,
+                        0
+                    )
+                )
+            );
+            Wait(0.100, Ignore Condition);
+        End;
+
+        "Cooldown on action"
+        Wait(3, Ignore Condition);
+        Set Player Variable(Event Player, print_round_history_i, 0);
+    }
+}
+
+
+
+disabled rule("Modules")
+{
+    event
+    {
+        Ongoing - Global;
+    }
+}
+
+
+
+rule("Print round module")
+{
+    event
+    {
+        Ongoing - Each Player;
+        All;
+        All;
+    }
+
+    conditions
+    {
+        Value In Array(
+            Player Variable(Event Player, print_round_module_params_arr),
+            0
+        ) == 999;
+    }
+
+    actions
+    {
+        "Pad message with a blank line if instructed to do so"
+        If(
+            Value In Array(
+                Player Variable(Event Player, print_round_module_params_arr),
+                2
+            )
+        );
+            Small Message(Event Player, Empty Array);
+        End;
+        Small Message(
+            Event Player,
+            Custom String(
+                "{0} : {1}",
+                Custom String(
+                    "{0} {1} {2}",
+                    Event Player,
+                    Hero Icon String(
+                        Value In Array(
+                            Value In Array(
+                                Player Variable(
+                                    Event Player,
+                                    round_history_arr
+                                ),
+                                Value In Array(
+                                    Player Variable(
+                                        Event Player,
+                                        print_round_module_params_arr
+                                    ),
+                                    1
+                                )
+                            ),
+                            1
+                        )
+                    ),
+                    Value In Array(
+                        Value In Array(
+                            Player Variable(Event Player, round_history_arr),
+                            Value In Array(
+                                Player Variable(
+                                    Event Player,
+                                    print_round_module_params_arr
+                                ),
+                                1
+                            )
+                        ),
+                        3
+                    )
+                ),
+                Custom String(
+                    "{0} {1} {2}",
+                    Value In Array(
+                        Value In Array(
+                            Player Variable(Event Player, round_history_arr),
+                            Value In Array(
+                                Player Variable(
+                                    Event Player,
+                                    print_round_module_params_arr
+                                ),
+                                1
+                            )
+                        ),
+                        4
+                    ),
+                    Hero Icon String(
+                        Value In Array(
+                            Value In Array(
+                                Player Variable(
+                                    Event Player,
+                                    round_history_arr
+                                ),
+                                Value In Array(
+                                    Player Variable(
+                                        Event Player,
+                                        print_round_module_params_arr
+                                    ),
+                                    1
+                                )
+                            ),
+                            2
+                        )
+                    ),
+                    Value In Array(
+                        Value In Array(
+                            Player Variable(Event Player, round_history_arr),
+                            Value In Array(
+                                Player Variable(
+                                    Event Player,
+                                    print_round_module_params_arr
+                                ),
+                                1
+                            )
+                        ),
+                        5
+                    )
+                ),
+                Null
+            )
+        );
+        Set Player Variable At Index(
+            Event Player,
+            print_round_module_params_arr,
+            0,
+            0
+        );
+    }
+}
+
+
+
+rule("Teleport module pt1")
+{
+    event
+    {
+        Ongoing - Each Player;
+        All;
+        All;
+    }
+
+    conditions
+    {
+        Value In Array(
+            Player Variable(Event Player, teleport_module_params_arr),
+            0
+        ) == 999;
+    }
+
+    actions
+    {
+        "Cancel motion"
+        Apply Impulse(
+            Event Player,
+            Down,
+            0.001,
+            To World,
+            Cancel Contrary Motion
+        );
+        Apply Impulse(
+            Event Player,
+            Up,
+            0.001,
+            To World,
+            Cancel Contrary Motion
+        );
+        Apply Impulse(
+            Event Player,
+            Backward,
+            0.001,
+            To World,
+            Cancel Contrary Motion
+        );
+        Apply Impulse(
+            Event Player,
+            Forward,
+            0.001,
+            To World,
+            Cancel Contrary Motion
+        );
+        Apply Impulse(
+            Event Player,
+            Right,
+            0.001,
+            To World,
+            Cancel Contrary Motion
+        );
+        Apply Impulse(
+            Event Player,
+            Left,
+            0.001,
+            To World,
+            Cancel Contrary Motion
+        );
+        Set Gravity(Event Player, Absolute Value(0));
+        Set Move Speed(Event Player, Absolute Value(0));
+        Set Player Variable At Index(
+            Event Player,
+            teleport_module_params_arr,
+            0,
+            1
+        );
+    }
+}
+
+
+
+rule("Teleport module pt2")
+{
+    event
+    {
+        Ongoing - Each Player;
+        All;
+        All;
+    }
+
+    conditions
+    {
+        "Executes once the player is not at their teleport destination. If the destination was at the player's position before the module was called, this is equivalent to waiting for the respawn to trigger."
+        Value In Array(
+            Player Variable(Event Player, teleport_module_params_arr),
+            0
+        ) == 1;
+        Compare(
+            Distance Between(
+                Position Of(Event Player),
+                Value In Array(
+                    Player Variable(Event Player, teleport_module_params_arr),
+                    1
+                )
+            ),
+            >,
+            1
+        ) == True;
+    }
+
+    actions
+    {
+        "Teleport until it works, i.e. the player is roughly at the teleport destination. This is necessary for cases where the destination isn't at the player's position."
+        Teleport(
+            Event Player,
+            Value In Array(
+                Player Variable(Event Player, teleport_module_params_arr),
+                1
+            )
+        );
+        Wait(0.016, Ignore Condition);
+        Loop If Condition Is True;
+
+        "Fork execution based on whether or not an exit facing direction has been specified"
+        If(
+            Not(
+                Value In Array(
+                    Player Variable(Event Player, teleport_module_params_arr),
+                    2
+                )
+            )
+        );
+            Set Player Variable At Index(
+                Event Player,
+                teleport_module_params_arr,
+                0,
+                3
+            );
+        Else;
+            Set Player Variable At Index(
+                Event Player,
+                teleport_module_params_arr,
+                0,
+                2
+            );
+        End;
+    }
+}
+
+
+
+rule("Teleport module pt3")
+{
+    event
+    {
+        Ongoing - Each Player;
+        All;
+        All;
+    }
+
+    conditions
+    {
+        Or(
+            Compare(
+                Value In Array(
+                    Player Variable(Event Player, teleport_module_params_arr),
+                    0
+                ),
+                ==,
+                2
+            ),
+            Compare(
+                Value In Array(
+                    Player Variable(Event Player, teleport_module_params_arr),
+                    0
+                ),
+                ==,
+                3
+            )
+        ) == True;
+    }
+
+    actions
+    {
+        "Set facing direction until it works, i.e. until the player is roughly facing in the set direction"
+        While(
+            Compare(
+                Absolute Value(
+                    Subtract(
+                        1,
+                        Dot Product(
+                            Facing Direction Of(Event Player),
+                            Normalize(
+                                Value In Array(
+                                    Player Variable(
+                                        Event Player,
+                                        teleport_module_params_arr
+                                    ),
+                                    2
+                                )
+                            )
+                        )
+                    )
+                ),
+                >,
+                0.050
+            )
+        );
+
+            "Set the player to face their opponent if teleport_module_params_arr[2] was unspecified"
+            If(
+                Compare(
+                    Value In Array(
+                        Player Variable(
+                            Event Player,
+                            teleport_module_params_arr
+                        ),
+                        0
+                    ),
+                    ==,
+                    3
+                )
+            );
+                Set Player Variable At Index(
+                    Event Player,
+                    teleport_module_params_arr,
+                    2,
+                    Vector Towards(
+                        Position Of(Event Player),
+                        Position Of(
+                            Value In Array(
+                                Player Variable(Event Player, opponent_arr),
+                                0
+                            )
+                        )
+                    )
+                );
+            End;
+            Set Facing(
+                Event Player,
+                Value In Array(
+                    Player Variable(Event Player, teleport_module_params_arr),
+                    2
+                ),
+                To World
+            );
+            Wait(0.016, Ignore Condition);
+        End;
+
+        "Restore motion"
+        Set Move Speed(Event Player, 100);
+        Set Gravity(Event Player, 100);
+        Apply Impulse(
+            Event Player,
+            Value In Array(
+                Player Variable(Event Player, teleport_module_params_arr),
+                3
+            ),
+            Square Root(
+                Dot Product(
+                    Value In Array(
+                        Player Variable(
+                            Event Player,
+                            teleport_module_params_arr
+                        ),
+                        3
+                    ),
+                    Value In Array(
+                        Player Variable(
+                            Event Player,
+                            teleport_module_params_arr
+                        ),
+                        3
+                    )
+                )
+            ),
+            To World,
+            Incorporate Contrary Motion
+        );
+        Set Player Variable At Index(
+            Event Player,
+            teleport_module_params_arr,
+            0,
+            0
+        );
+    }
+}
+
+
+
+disabled rule("Testing")
+{
+    event
+    {
+        Ongoing - Global;
+    }
+}
+
+
+
+disabled rule("Server stats")
+{
+    event
+    {
+        Ongoing - Global;
+    }
+
+    actions
+    {
+        Create HUD Text(
+            All Players(All Teams),
+            Custom String("Load: {0}", Server Load, Null, Null),
+            Null,
+            Null,
+            Left,
+            0,
+            White,
+            White,
+            White,
+            Visible To and String,
+            Default Visibility
+        );
+        Create HUD Text(
+            All Players(All Teams),
+            Custom String("Avg: {0}", Server Load Average, Null, Null),
+            Null,
+            Null,
+            Left,
+            0,
+            White,
+            White,
+            White,
+            Visible To and String,
+            Default Visibility
+        );
+        Create HUD Text(
+            All Players(All Teams),
+            Custom String("Peak: {0}", Server Load Peak, Null, Null),
+            Null,
+            Null,
+            Left,
+            0,
+            White,
+            White,
+            White,
+            Visible To and String,
+            Default Visibility
+        );
+    }
+}
+
+
+
+disabled rule("Increment score (a1)")
+{
+    event
+    {
+        Ongoing - Each Player;
+        All;
+        All;
+    }
+
+    conditions
+    {
+        Is Button Held(Event Player, Ability 1) == True;
+    }
+
+    actions
+    {
+        Modify Player Score(Event Player, 1);
+    }
+}
+
+
+
+disabled rule("Win round (primary+secondary)")
+{
+    event
+    {
+        Ongoing - Each Player;
+        All;
+        All;
+    }
+
+    conditions
+    {
+        Is Button Held(Event Player, Primary Fire) == True;
+        Is Button Held(Event Player, Secondary Fire) == True;
+    }
+
+    actions
+    {
+        Set Player Variable(Event Player, round_result, 2);
+        Set Player Variable(
+            Value In Array(Player Variable(Event Player, opponent_arr), 0),
+            round_result,
+            1
+        );
+    }
+}
+
+
+
+disabled rule("Killbind (crouch)")
+{
+    event
+    {
+        Ongoing - Each Player;
+        All;
+        All;
+    }
+
+    conditions
+    {
+        Is Button Held(Event Player, Crouch) == True;
+    }
+
+    actions
+    {
+        Kill(Event Player, Null);
+    }
+}
+
+
+
+disabled rule("Activate refresh (secondary)")
+{
+    event
+    {
+        Ongoing - Each Player;
+        All;
+        All;
+    }
+
+    conditions
+    {
+        Is Button Held(Event Player, Secondary Fire) == True;
+        Has Spawned(Event Player) == True;
+        Is Alive(Event Player) == True;
+    }
+
+    actions
+    {
+        Set Player Variable(Event Player, refresh_flag, 999);
+    }
+}
+
+
+
+disabled rule("Reveal all players")
+{
+    event
+    {
+        Ongoing - Each Player;
+        All;
+        All;
+    }
+
+    actions
+    {
+        Create Icon(
+            All Players(All Teams),
+            Event Player,
+            Arrow: Down,
+            Visible To and Position,
+            Green,
+            True
+        );
+    }
+}
+
+
+
+disabled rule("Show position")
+{
+    event
+    {
+        Ongoing - Each Player;
+        All;
+        All;
+    }
+
+    actions
+    {
+        Create HUD Text(
+            All Players(All Teams),
+            Position Of(Event Player),
+            Null,
+            Null,
+            Left,
+            0,
+            White,
+            White,
+            White,
+            Visible To and String,
+            Default Visibility
+        );
+    }
+}
+
+
+
+disabled rule("Test smart respawn (a1)")
+{
+    event
+    {
+        Ongoing - Each Player;
+        All;
+        All;
+    }
+
+    conditions
+    {
+        Is Button Held(Event Player, Ability 1) == True;
+    }
+
+    actions
+    {
+        Destroy All Icons;
+        For Player Variable(Event Player, Z, 0, 50, 1);
+            Set Player Variable(
+                Event Player,
+                proposed_spawn,
+                Nearest Walkable Position(
+                    Add(
+                        Position Of(Event Player),
+                        Multiply(
+                            Random Real(
+                                Global Variable(spawn_radius_min),
+                                Global Variable(spawn_radius_max)
+                            ),
+                            Normalize(
+                                Vector(
+                                    Random Real(-1.000, 1),
+                                    Random Real(-1.000, 1),
+                                    Random Real(-1.000, 1)
+                                )
+                            )
+                        )
+                    )
+                )
+            );
+            If(
+                Or(
+                    Or(
+                        Compare(
+                            Distance Between(
+                                Position Of(Event Player),
+                                Player Variable(Event Player, proposed_spawn)
+                            ),
+                            <,
+                            Global Variable(spawn_radius_min)
+                        ),
+                        Compare(
+                            Distance Between(
+                                Position Of(Event Player),
+                                Player Variable(Event Player, proposed_spawn)
+                            ),
+                            >,
+                            Global Variable(spawn_radius_max)
+                        )
+                    ),
+                    Compare(
+                        Filtered Array(
+                            Global Variable(out_of_bounds_arr),
+                            Compare(
+                                Distance Between(
+                                    Player Variable(
+                                        Event Player,
+                                        proposed_spawn
+                                    ),
+                                    Value In Array(Current Array Element, 0)
+                                ),
+                                <=,
+                                Value In Array(Current Array Element, 1)
+                            )
+                        ),
+                        !=,
+                        Empty Array
+                    )
+                )
+            );
+                Create Icon(
+                    All Players(All Teams),
+                    Player Variable(Event Player, proposed_spawn),
+                    Circle,
+                    None,
+                    Red,
+                    True
+                );
+            Else;
+                Create Icon(
+                    All Players(All Teams),
+                    Player Variable(Event Player, proposed_spawn),
+                    Circle,
+                    None,
+                    Green,
+                    True
+                );
+            End;
+            Wait(0.016, Restart When True);
+        End;
+    }
+}
+
+
+
+disabled rule("Out of bounds indicator")
+{
+    event
+    {
+        Ongoing - Each Player;
+        All;
+        All;
+    }
+
+    actions
+    {
+        Create HUD Text(
+            All Players(All Teams),
+            Null,
+            Null,
+            Custom String(
+                "{0}",
+                Compare(
+                    Filtered Array(
+                        Global Variable(out_of_bounds_arr),
+                        Compare(
+                            Distance Between(
+                                Position Of(Event Player),
+                                Value In Array(Current Array Element, 0)
+                            ),
+                            <=,
+                            Value In Array(Current Array Element, 1)
+                        )
+                    ),
+                    ==,
+                    Empty Array
+                ),
+                Null,
+                Null
+            ),
+            Left,
+            0,
+            White,
+            White,
+            White,
+            Visible To and String,
+            Visible Always
+        );
+    }
+}
+
+
+
+disabled rule("Teleport forward (interact)")
+{
+    event
+    {
+        Ongoing - Each Player;
+        All;
+        All;
+    }
+
+    conditions
+    {
+        Is Button Held(Event Player, Interact) == True;
+    }
+
+    actions
+    {
+        Teleport(
+            Event Player,
+            Add(Position Of(Event Player), Facing Direction Of(Event Player))
+        );
+        Wait(0.025, Ignore Condition);
+        Loop If Condition Is True;
+    }
+}
+
+
+
+disabled rule("Create dummy (interact)")
+{
+    event
+    {
+        Ongoing - Each Player;
+        All;
+        All;
+    }
+
+    conditions
+    {
+        Is Button Held(Event Player, Interact) == True;
+    }
+
+    actions
+    {
+        Create Dummy Bot(
+            Hero(Orisa),
+            All Teams,
+            -1.000,
+            Position Of(Event Player),
+            Vector(0, 0, 0)
+        );
+    }
+}
+
+

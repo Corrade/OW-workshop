@@ -1,0 +1,88 @@
+![](https://i.imgur.com/6NracTd.jpg)
+
+Requires patch 1.45+ (HUD text sort order reevaluation).
+
+
+
+## Explanation
+Note: We'll manage everything on a player-by-player basis as opposed to globally as data belonging to a player is automatically cleaned up when the player leaves.
+
+So, our goal is to have a player variable `dpm` that stores its player's DPM. This will allow us to create an appropriate HUD.
+
+The complexity in this comes from only storing damage dealt over the last minute. When an instance of damage becomes a minute old, how do we go about removing it? We could attach a timestamp to all instances of damage and store them in an array. We could remove expired entries by filtering the array, and calculate DPM by summing the array. However, this approach lends itself to huge arrays and expensive processes.
+
+Instead, we'll limit the array, which we'll call `dpm_array`, to 60 elements. Each element will represent damage dealt over a second recorded some time ago and the array will be organised logically. With this structure, there are less pieces to worry about because we'll be storing damage in chunks, and timestamps will implied by a logical order rather than stored explicitly. (In this case, the chunk size will be one second, but it could be anything reasonable. Lower values will give greater precision for more processing demand.)
+
+To construct this array, we'll keep a variable called `dps` that buffers all damage dealt in the last second. Then, every second, we'll replace the next element in `dpm_array` with it. Once we get to the end of the array (index 59), we'll wrap back around (index 0). Since the array will be 60 elements long and we'll move one index every second, every element we revisit and replace will be more or less one minute old. We'll represent and increment our current position in the array by introducing another variable. We can get around manually wrapping this variable around to 0 every time it reaches 59 by applying modulo 60 whenever we reference it. With this approach, our current position variable will just be something we increment every second, and assuming the leaderboard is always open, this means it'll simply be how long the player has spent in-game, so we'll call it `seconds_ingame`.
+
+This completes our implementation of `dpm_array`, but we can also revise how we calculate `dpm` to avoid constantly summing `dpm_array`. Every time we add a value to the array, we'll also add it to `dpm`, and every time we replace a value in the array, we'll subtract it from `dpm` beforehand. As a final improvement, to make `dpm` update more quickly, we'll add damage directly to `dpm` as we do to `dps` instead of waiting for it to be buffered and added to `dpm_array`.
+
+
+
+
+## Code
+### Variable initialisation
+```
+actions
+{
+    Set Player Variable(Event Player, seconds_ingame, 0);
+    Set Player Variable(Event Player, dps, 0);
+    Set Player Variable(Event Player, dpm_array, Empty Array);
+    Set Player Variable(Event Player, dpm, 0);
+}
+```
+
+### HUD text
+We'll base a player's DPM rank off of their index in an array of all players sorted by their DPM. Since arrays are sorted in ascending order, this means higher DPM => higher index => incorrect rank order, so we'll sort by the negative of each players' DPM. Arrays also index from zero so we'll increment the result.
+
+Similarly, we'll set the sort order to the negative of the player's DPM since higher sort values give lower visual positions. However, it's critical to know that sort values produce faulty results if they're not between -1000 and 1000, so the player's DPM is divided by 100. You'll need to adjust this if your players have abnormally high DPMs, say above 10000.
+```
+actions
+{
+    Create HUD Text(
+        All Players(All Teams), Null, Null,
+        Custom String(
+            "{0} {1}....{2}",
+            Custom String(
+                "{0}. {1}",
+                Add(Index Of Array Value(Sorted Array(All Players(All Teams), Multiply(Player Variable(Current Array Element, dpm), -1.000)), Event Player), 1),
+                Hero Icon String(Hero Of(Event Player)),
+                Null
+            ),
+            Round To Integer(Player Variable(Event Player, dpm), To Nearest),
+            Event Player
+        ),
+        Left, Divide(Player Variable(Event Player, dpm), -100.000), White, White, White, Visible To Sort Order and String, Visible Always
+    );
+}
+```
+
+### Damage event
+You can ignore self-damage by adding the condition `Attacker != Victim`.
+```
+actions
+{
+    Modify Player Variable(Attacker, dps, Add, Event Damage);
+    Modify Player Variable(Attacker, dpm, Add, Event Damage);
+}
+```
+
+### Core loop
+To track damage over the last `n` seconds, replace all occurrences of 60 with `n`.
+```
+actions
+{
+    "dpm_array[seconds_ingame modulo 60] = dps"
+    Set Player Variable At Index(Event Player, dpm_array, Modulo(Player Variable(Event Player, seconds_ingame), 60), Player Variable(Event Player, dps));
+    "seconds_ingame = seconds_ingame + 1"
+    Modify Player Variable(Event Player, seconds_ingame, Add, 1);
+    "dpm = dpm - dpm_array[seconds_ingame modulo 60]"
+    Modify Player Variable(Event Player, dpm, Subtract, Value In Array(Player Variable(Event Player, dpm_array), Modulo(Player Variable(Event Player, seconds_ingame), 60)));
+    "dps = 0"
+    Set Player Variable(Event Player, dps, 0);
+    Wait(1, Ignore Condition);
+    Loop;
+}
+```
+
+

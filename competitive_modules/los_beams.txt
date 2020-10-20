@@ -1,0 +1,409 @@
+variables
+{
+    player:
+        0: toggle
+}
+
+
+
+rule("LOS beams visible to team")
+{
+    event
+    {
+        Ongoing - Each Player;
+        All;
+        All;
+    }
+
+    actions
+    {
+        Create Beam Effect(
+            Value In Array(
+                Append To Array(
+                    Append To Array(Empty Array, Null),
+                    All Living Players(All Teams)
+                ),
+                Multiply(
+                    1,
+                    And(
+                        And(
+                            Is In Line of Sight(
+                                Divide(
+                                    Add(
+                                        Position Of(Event Player),
+                                        Eye Position(Event Player)
+                                    ),
+                                    2
+                                ),
+                                Divide(
+                                    Add(
+                                        Position Of(
+                                            Value In Array(
+                                                All Living Players(
+                                                    Team Of(Event Player)
+                                                ),
+                                                0
+                                            )
+                                        ),
+                                        Eye Position(
+                                            Value In Array(
+                                                All Living Players(
+                                                    Team Of(Event Player)
+                                                ),
+                                                0
+                                            )
+                                        )
+                                    ),
+                                    2
+                                ),
+                                Barriers Do Not Block LOS
+                            ),
+                            Compare(
+                                Value In Array(
+                                    All Living Players(Team Of(Event Player)),
+                                    0
+                                ),
+                                !=,
+                                Event Player
+                            )
+                        ),
+                        Player Variable(Event Player, toggle)
+                    )
+                )
+            ),
+            Good Beam,
+            Event Player,
+            Value In Array(All Living Players(Team Of(Event Player)), 0),
+            White,
+            Visible To Position and Radius
+        );
+        Create Beam Effect(
+            Value In Array(
+                Append To Array(
+                    Append To Array(Empty Array, Null),
+                    All Living Players(All Teams)
+                ),
+                Multiply(
+                    1,
+                    And(
+                        And(
+                            Is In Line of Sight(
+                                Divide(
+                                    Add(
+                                        Position Of(Event Player),
+                                        Eye Position(Event Player)
+                                    ),
+                                    2
+                                ),
+                                Divide(
+                                    Add(
+                                        Position Of(
+                                            Value In Array(
+                                                All Living Players(
+                                                    Team Of(Event Player)
+                                                ),
+                                                1
+                                            )
+                                        ),
+                                        Eye Position(
+                                            Value In Array(
+                                                All Living Players(
+                                                    Team Of(Event Player)
+                                                ),
+                                                1
+                                            )
+                                        )
+                                    ),
+                                    2
+                                ),
+                                Barriers Do Not Block LOS
+                            ),
+                            Compare(
+                                Value In Array(
+                                    All Living Players(Team Of(Event Player)),
+                                    1
+                                ),
+                                !=,
+                                Event Player
+                            )
+                        ),
+                        Player Variable(Event Player, toggle)
+                    )
+                )
+            ),
+            Good Beam,
+            Event Player,
+            Value In Array(All Living Players(Team Of(Event Player)), 1),
+            White,
+            Visible To Position and Radius
+        );
+        Create Beam Effect(
+            Value In Array(
+                Append To Array(
+                    Append To Array(Empty Array, Null),
+                    All Living Players(All Teams)
+                ),
+                Multiply(
+                    1,
+                    And(
+                        And(
+                            Is In Line of Sight(
+                                Divide(
+                                    Add(
+                                        Position Of(Event Player),
+                                        Eye Position(Event Player)
+                                    ),
+                                    2
+                                ),
+                                Divide(
+                                    Add(
+                                        Position Of(
+                                            Value In Array(
+                                                All Living Players(
+                                                    Team Of(Event Player)
+                                                ),
+                                                2
+                                            )
+                                        ),
+                                        Eye Position(
+                                            Value In Array(
+                                                All Living Players(
+                                                    Team Of(Event Player)
+                                                ),
+                                                2
+                                            )
+                                        )
+                                    ),
+                                    2
+                                ),
+                                Barriers Do Not Block LOS
+                            ),
+                            Compare(
+                                Value In Array(
+                                    All Living Players(Team Of(Event Player)),
+                                    2
+                                ),
+                                !=,
+                                Event Player
+                            )
+                        ),
+                        Player Variable(Event Player, toggle)
+                    )
+                )
+            ),
+            Good Beam,
+            Event Player,
+            Value In Array(All Living Players(Team Of(Event Player)), 2),
+            White,
+            Visible To Position and Radius
+        );
+        Create Beam Effect(
+            Value In Array(
+                Append To Array(
+                    Append To Array(Empty Array, Null),
+                    All Living Players(All Teams)
+                ),
+                Multiply(
+                    1,
+                    And(
+                        And(
+                            Is In Line of Sight(
+                                Divide(
+                                    Add(
+                                        Position Of(Event Player),
+                                        Eye Position(Event Player)
+                                    ),
+                                    2
+                                ),
+                                Divide(
+                                    Add(
+                                        Position Of(
+                                            Value In Array(
+                                                All Living Players(
+                                                    Team Of(Event Player)
+                                                ),
+                                                3
+                                            )
+                                        ),
+                                        Eye Position(
+                                            Value In Array(
+                                                All Living Players(
+                                                    Team Of(Event Player)
+                                                ),
+                                                3
+                                            )
+                                        )
+                                    ),
+                                    2
+                                ),
+                                Barriers Do Not Block LOS
+                            ),
+                            Compare(
+                                Value In Array(
+                                    All Living Players(Team Of(Event Player)),
+                                    3
+                                ),
+                                !=,
+                                Event Player
+                            )
+                        ),
+                        Player Variable(Event Player, toggle)
+                    )
+                )
+            ),
+            Good Beam,
+            Event Player,
+            Value In Array(All Living Players(Team Of(Event Player)), 3),
+            White,
+            Visible To Position and Radius
+        );
+        Create Beam Effect(
+            Value In Array(
+                Append To Array(
+                    Append To Array(Empty Array, Null),
+                    All Living Players(All Teams)
+                ),
+                Multiply(
+                    1,
+                    And(
+                        And(
+                            Is In Line of Sight(
+                                Divide(
+                                    Add(
+                                        Position Of(Event Player),
+                                        Eye Position(Event Player)
+                                    ),
+                                    2
+                                ),
+                                Divide(
+                                    Add(
+                                        Position Of(
+                                            Value In Array(
+                                                All Living Players(
+                                                    Team Of(Event Player)
+                                                ),
+                                                4
+                                            )
+                                        ),
+                                        Eye Position(
+                                            Value In Array(
+                                                All Living Players(
+                                                    Team Of(Event Player)
+                                                ),
+                                                4
+                                            )
+                                        )
+                                    ),
+                                    2
+                                ),
+                                Barriers Do Not Block LOS
+                            ),
+                            Compare(
+                                Value In Array(
+                                    All Living Players(Team Of(Event Player)),
+                                    4
+                                ),
+                                !=,
+                                Event Player
+                            )
+                        ),
+                        Player Variable(Event Player, toggle)
+                    )
+                )
+            ),
+            Good Beam,
+            Event Player,
+            Value In Array(All Living Players(Team Of(Event Player)), 4),
+            White,
+            Visible To Position and Radius
+        );
+        Create Beam Effect(
+            Value In Array(
+                Append To Array(
+                    Append To Array(Empty Array, Null),
+                    All Living Players(All Teams)
+                ),
+                Multiply(
+                    1,
+                    And(
+                        And(
+                            Is In Line of Sight(
+                                Divide(
+                                    Add(
+                                        Position Of(Event Player),
+                                        Eye Position(Event Player)
+                                    ),
+                                    2
+                                ),
+                                Divide(
+                                    Add(
+                                        Position Of(
+                                            Value In Array(
+                                                All Living Players(
+                                                    Team Of(Event Player)
+                                                ),
+                                                5
+                                            )
+                                        ),
+                                        Eye Position(
+                                            Value In Array(
+                                                All Living Players(
+                                                    Team Of(Event Player)
+                                                ),
+                                                5
+                                            )
+                                        )
+                                    ),
+                                    2
+                                ),
+                                Barriers Do Not Block LOS
+                            ),
+                            Compare(
+                                Value In Array(
+                                    All Living Players(Team Of(Event Player)),
+                                    5
+                                ),
+                                !=,
+                                Event Player
+                            )
+                        ),
+                        Player Variable(Event Player, toggle)
+                    )
+                )
+            ),
+            Good Beam,
+            Event Player,
+            Value In Array(All Living Players(Team Of(Event Player)), 5),
+            White,
+            Visible To Position and Radius
+        );
+    }
+}
+
+
+
+rule("Toggle")
+{
+    event
+    {
+        Ongoing - Each Player;
+        All;
+        All;
+    }
+
+    conditions
+    {
+        Is Button Held(Event Player, Interact) == True;
+    }
+
+    actions
+    {
+        Set Player Variable(
+            Event Player,
+            toggle,
+            Subtract(1, Player Variable(Event Player, toggle))
+        );
+    }
+}
+
+

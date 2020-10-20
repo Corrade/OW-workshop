@@ -1,0 +1,1041 @@
+settings
+{
+	main
+	{
+		Description: "Add up to 4 Bastion bots to team 1 and play on team 2 // n123q45#0797 and Corrade#0901"
+	}
+
+	lobby
+	{
+		Max Spectators: 12
+	}
+
+	modes
+	{
+		Assault
+		{
+			enabled maps
+			{
+			}
+		}
+
+		Control
+		{
+			Score To Win: 2
+
+			enabled maps
+			{
+			}
+		}
+
+		Escort
+		{
+			enabled maps
+			{
+				Rialto
+			}
+		}
+
+		Hybrid
+		{
+			enabled maps
+			{
+			}
+		}
+
+		General
+		{
+			Competitive Rules: On
+			Limit Roles: 2 Of Each Role Per Team
+		}
+	}
+}
+
+variables
+{
+    global:
+        0: Distance
+        1: DamagePerTick
+        2: TimeBetweenDamage
+        3: PointArray
+        4: CapRange
+        5: HackDuration
+        6: Point1
+        7: Point2
+        8: Point3
+        9: Point4
+        10: Point5a
+        11: Point5b
+        12: Point6
+        13: Point7
+
+    player:
+        0: EnableDOT
+}
+
+
+
+disabled rule("For hosts")
+{
+    event
+    {
+        Ongoing - Global;
+    }
+}
+
+
+
+rule("Settings")
+{
+    event
+    {
+        Ongoing - Global;
+    }
+
+    actions
+    {
+        Set Global Variable(Distance, 7);
+        Set Global Variable(DamagePerTick, 10);
+        Set Global Variable(TimeBetweenDamage, 0.100);
+        Set Global Variable(CapRange, 3.500);
+        Set Global Variable(HackDuration, 6);
+    }
+}
+
+
+
+disabled rule("Housekeeping")
+{
+    event
+    {
+        Ongoing - Global;
+    }
+}
+
+
+
+rule("Initialise global entities")
+{
+    event
+    {
+        Ongoing - Global;
+    }
+
+    actions
+    {
+        Create Effect(
+            Value In Array(
+                Append To Array(
+                    Append To Array(Empty Array, Null),
+                    Players On Hero(Hero(Reinhardt), Team 2)
+                ),
+                Multiply(
+                    1,
+                    Compare(
+                        Value In Array(Global Variable(PointArray), 0),
+                        !=,
+                        Vector(0, 0, 0)
+                    )
+                )
+            ),
+            Light Shaft,
+            Green,
+            Value In Array(Global Variable(PointArray), 0),
+            Global Variable(CapRange),
+            Visible To Position and Radius
+        );
+        Create Effect(
+            Value In Array(
+                Append To Array(
+                    Append To Array(Empty Array, Null),
+                    Players On Hero(Hero(Reinhardt), Team 2)
+                ),
+                Multiply(
+                    1,
+                    Compare(
+                        Value In Array(Global Variable(PointArray), 1),
+                        !=,
+                        Vector(0, 0, 0)
+                    )
+                )
+            ),
+            Light Shaft,
+            Green,
+            Value In Array(Global Variable(PointArray), 1),
+            Global Variable(CapRange),
+            Visible To Position and Radius
+        );
+
+        // Wait for the game to register the Bastion bots
+        Wait(2, Ignore Condition);
+
+        Create Dummy Bot(
+            Hero(Orisa),
+            Team 1,
+            Count Of(All Players(Team 1)),
+            Vector(0, 0, 0),
+            Vector(0, 0, 0)
+        );
+    }
+}
+
+
+
+rule("Initialise player entities")
+{
+    event
+    {
+        Ongoing - Each Player;
+        All;
+        All;
+    }
+
+    actions
+    {
+        Create HUD Text(
+            Event Player,
+            Null,
+            Null,
+            Custom String(
+                "Distance from nearest teammate: {0} (max: {1})",
+                Distance Between(
+                    Position Of(Event Player),
+                    Position Of(
+                        First Of(
+                            Sorted Array(
+                                Remove From Array(
+                                    All Living Players(Team Of(Event Player)),
+                                    Event Player
+                                ),
+                                Distance Between(
+                                    Position Of(Event Player),
+                                    Position Of(Current Array Element)
+                                )
+                            )
+                        )
+                    )
+                ),
+                Global Variable(Distance),
+                Null
+            ),
+            Left,
+            0,
+            White,
+            White,
+            White,
+            Visible To and String,
+            Default Visibility
+        );
+        Create Effect(
+            Value In Array(
+                Append To Array(
+                    Append To Array(Empty Array, Null),
+                    Event Player
+                ),
+                Multiply(
+                    1,
+                    And(
+                        And(
+                            Compare(
+                                Distance Between(
+                                    Position Of(Event Player),
+                                    Position Of(
+                                        Players On Hero(
+                                            Hero(Reinhardt),
+                                            Team Of(Event Player)
+                                        )
+                                    )
+                                ),
+                                >,
+                                Global Variable(Distance)
+                            ),
+                            Compare(Hero Of(Event Player), !=, Hero(Reinhardt))
+                        ),
+                        Player Variable(Event Player, EnableDOT)
+                    )
+                )
+            ),
+            Light Shaft,
+            Red,
+            Event Player,
+            2.500,
+            Visible To Position and Radius
+        );
+    }
+}
+
+
+
+rule("Initialise miscellaneous")
+{
+    event
+    {
+        Player Joined Match;
+        All;
+        Slot 0;
+    }
+
+    actions
+    {
+        Set Global Variable(PointArray, Empty Array);
+        Modify Global Variable(PointArray, Append To Array, Vector(0, 0, 0));
+        Modify Global Variable(PointArray, Append To Array, Vector(0, 0, 0));
+        Set Move Speed(Players On Hero(Hero(Bastion), Team 1), 0);
+    }
+}
+
+
+
+rule("Skip assembly and setup")
+{
+    event
+    {
+        Ongoing - Global;
+    }
+
+    conditions
+    {
+        Or(Is Assembling Heroes, Is In Setup) == True;
+    }
+
+    actions
+    {
+        Set Match Time(0);
+        Wait(0.500, Ignore Condition);
+        Loop If Condition Is True;
+    }
+}
+
+
+
+disabled rule("Core")
+{
+    event
+    {
+        Ongoing - Global;
+    }
+}
+
+
+
+rule("DOT")
+{
+    event
+    {
+        Ongoing - Each Player;
+        All;
+        All;
+    }
+
+    conditions
+    {
+        Team Of(Event Player) == Team 2;
+        Player Variable(Event Player, EnableDOT) == True;
+        Distance Between(
+            Position Of(Event Player),
+            Position Of(
+                First Of(
+                    Sorted Array(
+                        Remove From Array(
+                            All Living Players(Team Of(Event Player)),
+                            Event Player
+                        ),
+                        Distance Between(
+                            Position Of(Event Player),
+                            Position Of(Current Array Element)
+                        )
+                    )
+                )
+            )
+            )> Global Variable(
+            Distance
+        );
+    }
+
+    actions
+    {
+        Wait(Global Variable(TimeBetweenDamage), Abort When False);
+        Damage(Event Player, Null, Global Variable(DamagePerTick));
+        Loop;
+    }
+}
+
+
+
+rule("Disable DOT on respawn")
+{
+    event
+    {
+        Ongoing - Each Player;
+        All;
+        All;
+    }
+
+    conditions
+    {
+        Has Spawned(Event Player) == True;
+        Is Alive(Event Player) == True;
+    }
+
+    actions
+    {
+        Set Player Variable(Event Player, EnableDOT, False);
+        Wait(1, Abort When False);
+        Set Player Variable(Event Player, EnableDOT, True);
+    }
+}
+
+
+
+rule("Dva invincibility")
+{
+    event
+    {
+        Ongoing - Each Player;
+        All;
+        All;
+    }
+
+    conditions
+    {
+        Hero Of(Event Player) == Hero(D.Va);
+        Team Of(Event Player) == Team 1;
+    }
+
+    actions
+    {
+        Set Status(Event Player, Null, Invincible, 9999);
+    }
+}
+
+
+
+rule("Anchor Dva to payload")
+{
+    event
+    {
+        Ongoing - Each Player;
+        All;
+        All;
+    }
+
+    conditions
+    {
+        Hero Of(Event Player) == Hero(D.Va);
+        Team Of(Event Player) == Team 1;
+        Distance Between(Position Of(Event Player), Payload Position) > 2;
+    }
+
+    actions
+    {
+        Teleport(Event Player, Payload Position);
+    }
+}
+
+
+
+rule("Instant respawn for team 1")
+{
+    event
+    {
+        Player Died;
+        All;
+        All;
+    }
+
+    conditions
+    {
+        Team Of(Event Player) == Team 1;
+    }
+
+    actions
+    {
+        Respawn(Event Player);
+    }
+}
+
+
+
+rule("Point cap")
+{
+    event
+    {
+        Ongoing - Global;
+    }
+
+    conditions
+    {
+        Filtered Array(
+            Global Variable(PointArray),
+            And(
+                Compare(
+                    Distance Between(
+                        Position Of(Players On Hero(Hero(Reinhardt), Team 2)),
+                        Current Array Element
+                    ),
+                    <,
+                    Global Variable(CapRange)
+                ),
+                Compare(Current Array Element, !=, Vector(0, 0, 0))
+            )
+        ) != Empty Array;
+    }
+
+    actions
+    {
+        Set Global Variable(PointArray, Empty Array);
+        Modify Global Variable(PointArray, Append To Array, Vector(0, 0, 0));
+        Modify Global Variable(PointArray, Append To Array, Vector(0, 0, 0));
+        Destroy Dummy Bot(Team 1, Slot Of(Players On Hero(Hero(D.Va), Team 1)));
+        Set Status(
+            All Players(Team 2),
+            Null,
+            Hacked,
+            Global Variable(HackDuration)
+        );
+    }
+}
+
+
+
+rule("Point1")
+{
+    event
+    {
+        Ongoing - Global;
+    }
+
+    conditions
+    {
+        Payload Progress Percentage > 13;
+        Global Variable(Point1) == False;
+    }
+
+    actions
+    {
+        Set Global Variable At Index(
+            PointArray,
+            0,
+            Vector(63.490, 5.750, -41.260)
+        );
+        Allow Button(Players On Hero(Hero(Bastion), Team 1), Ability 1);
+        Create Dummy Bot(
+            Hero(D.Va),
+            Team 1,
+            Count Of(All Players(Team 1)),
+            Payload Position,
+            Vector(0, 0, 0)
+        );
+        Set Global Variable(Point1, True);
+        Teleport(
+            Players On Hero(Hero(Orisa), Team 1),
+            Vector(63.490, 5.750, -41.080)
+        );
+        Teleport(
+            Players On Hero(Hero(Bastion), Team 1),
+            Vector(64.800, 4.760, -41.260)
+        );
+        Press Button(Players On Hero(Hero(Bastion), Team 1), Ability 1);
+        Wait(0.500, Ignore Condition);
+        Disallow Button(Players On Hero(Hero(Bastion), Team 1), Ability 1);
+        Set Facing(
+            Players On Hero(Hero(Orisa), Team 1),
+            Vector(0.320, -0.660, 0.680),
+            To World
+        );
+        Press Button(Players On Hero(Hero(Orisa), Team 1), Ability 2);
+    }
+}
+
+
+
+rule("Point2")
+{
+    event
+    {
+        Ongoing - Global;
+    }
+
+    conditions
+    {
+        Payload Progress Percentage > 26;
+        Global Variable(Point2) == False;
+    }
+
+    actions
+    {
+        Set Global Variable At Index(
+            PointArray,
+            0,
+            Vector(41.600, 6.750, -70.260)
+        );
+        Allow Button(Players On Hero(Hero(Bastion), Team 1), Ability 1);
+        Create Dummy Bot(
+            Hero(D.Va),
+            Team 1,
+            Count Of(All Players(Team 1)),
+            Payload Position,
+            Vector(0, 0, 0)
+        );
+        Set Global Variable(Point2, True);
+        Teleport(
+            Players On Hero(Hero(Bastion), Team 1),
+            Vector(41.600, 6.750, -70.260)
+        );
+        Teleport(
+            Players On Hero(Hero(Orisa), Team 1),
+            Vector(39.970, 5.750, -72.030)
+        );
+        Press Button(Players On Hero(Hero(Bastion), Team 1), Ability 1);
+        Wait(0.500, Ignore Condition);
+        Disallow Button(Players On Hero(Hero(Bastion), Team 1), Ability 1);
+        Wait(0.500, Ignore Condition);
+        Set Facing(
+            Players On Hero(Hero(Orisa), Team 1),
+            Vector(0.460, -0.360, 0.810),
+            To World
+        );
+        Press Button(Players On Hero(Hero(Orisa), Team 1), Ability 2);
+    }
+}
+
+rule("Point3")
+{
+    event
+    {
+        Ongoing - Global;
+    }
+
+    conditions
+    {
+        Payload Progress Percentage > 48;
+        Global Variable(Point3) == False;
+    }
+
+    actions
+    {
+        Set Global Variable At Index(
+            PointArray,
+            0,
+            Vector(1.040, 5.750, -50.970)
+        );
+        Allow Button(Players On Hero(Hero(Bastion), Team 1), Ability 1);
+        Create Dummy Bot(
+            Hero(D.Va),
+            Team 1,
+            Count Of(All Players(Team 1)),
+            Payload Position,
+            Vector(0, 0, 0)
+        );
+        Set Global Variable(Point3, True);
+        Teleport(
+            Players On Hero(Hero(Bastion), Team 1),
+            Vector(1.040, 5.750, -50.970)
+        );
+        Teleport(
+            Players On Hero(Hero(Orisa), Team 1),
+            Vector(0, 5.750, -50.280)
+        );
+        Press Button(Players On Hero(Hero(Bastion), Team 1), Ability 1);
+        Wait(0.500, Ignore Condition);
+        Disallow Button(Players On Hero(Hero(Bastion), Team 1), Ability 1);
+        Wait(0.500, Ignore Condition);
+        Set Facing(
+            Players On Hero(Hero(Orisa), Team 1),
+            Vector(0.760, -0.380, -0.520),
+            To World
+        );
+        Press Button(Players On Hero(Hero(Orisa), Team 1), Ability 2);
+    }
+}
+
+
+
+rule("Point4")
+{
+    event
+    {
+        Ongoing - Global;
+    }
+
+    conditions
+    {
+        Payload Progress Percentage > 58;
+        Global Variable(Point4) == False;
+    }
+
+    actions
+    {
+        Set Global Variable At Index(
+            PointArray,
+            0,
+            Vector(-15.680, 6.760, -48.222)
+        );
+        Allow Button(Players On Hero(Hero(Bastion), Team 1), Ability 1);
+        Create Dummy Bot(
+            Hero(D.Va),
+            Team 1,
+            Count Of(All Players(Team 1)),
+            Payload Position,
+            Vector(0, 0, 0)
+        );
+        Set Global Variable(Point4, True);
+        Teleport(
+            Players On Hero(Hero(Bastion), Team 1),
+            Vector(-15.680, 6.760, -48.220)
+        );
+        Teleport(
+            Players On Hero(Hero(Orisa), Team 1),
+            Vector(-14.110, 5.750, -49.340)
+        );
+        Press Button(Players On Hero(Hero(Bastion), Team 1), Ability 1);
+        Wait(0.500, Ignore Condition);
+        Disallow Button(Players On Hero(Hero(Bastion), Team 1), Ability 1);
+        Wait(0.500, Ignore Condition);
+        Set Facing(
+            Players On Hero(Hero(Orisa), Team 1),
+            Vector(-0.630, -0.560, 0.540),
+            To World
+        );
+        Press Button(Players On Hero(Hero(Orisa), Team 1), Ability 2);
+    }
+}
+
+
+
+rule("Point5a")
+{
+    event
+    {
+        Ongoing - Global;
+    }
+
+    conditions
+    {
+        Payload Progress Percentage > 68;
+        Global Variable(Point5a) == False;
+    }
+
+    actions
+    {
+        Set Global Variable At Index(
+            PointArray,
+            0,
+            Vector(-37.350, 4.750, -78.130)
+        );
+        Allow Button(Players On Hero(Hero(Bastion), Team 1), Ability 1);
+        Create Dummy Bot(
+            Hero(D.Va),
+            Team 1,
+            Count Of(All Players(Team 1)),
+            Payload Position,
+            Vector(0, 0, 0)
+        );
+        Set Global Variable(Point5a, True);
+        Teleport(
+            Players On Hero(Hero(Bastion), Team 1),
+            Vector(-35.650, 4.750, -76.540)
+        );
+        Teleport(
+            Players On Hero(Hero(Orisa), Team 1),
+            Vector(-37.350, 4.750, -78.130)
+        );
+        Press Button(Players On Hero(Hero(Bastion), Team 1), Ability 1);
+        Wait(0.500, Ignore Condition);
+        Disallow Button(Players On Hero(Hero(Bastion), Team 1), Ability 1);
+        Wait(0.500, Ignore Condition);
+        Set Facing(
+            Players On Hero(Hero(Orisa), Team 1),
+            Vector(-0.250, -0.440, 0.860),
+            To World
+        );
+        Press Button(Players On Hero(Hero(Orisa), Team 1), Ability 2);
+    }
+}
+
+
+
+rule("Point5b")
+{
+    event
+    {
+        Ongoing - Global;
+    }
+
+    conditions
+    {
+        Global Variable(Point5a) == True;
+        Global Variable(Point5b) == False;
+        Filtered Array(
+            Global Variable(PointArray),
+            Compare(Current Array Element, !=, Vector(0, 0, 0))
+        ) == Empty Array;
+    }
+
+    actions
+    {
+        Set Global Variable At Index(
+            PointArray,
+            0,
+            Vector(-48.940, -1.250, -59.890)
+        );
+        Allow Button(Players On Hero(Hero(Bastion), Team 1), Ability 1);
+        Create Dummy Bot(
+            Hero(D.Va),
+            Team 1,
+            Count Of(All Players(Team 1)),
+            Payload Position,
+            Vector(0, 0, 0)
+        );
+        Set Global Variable(Point5b, True);
+        Teleport(
+            Players On Hero(Hero(Bastion), Team 1),
+            Vector(-48.940, -1.250, -59.890)
+        );
+        Teleport(
+            Players On Hero(Hero(Orisa), Team 1),
+            Vector(-50.000, -1.250, -60.110)
+        );
+        Press Button(Players On Hero(Hero(Bastion), Team 1), Ability 1);
+        Wait(0.500, Ignore Condition);
+        Disallow Button(Players On Hero(Hero(Bastion), Team 1), Ability 1);
+        Wait(0.500, Ignore Condition);
+        Set Facing(
+            Players On Hero(Hero(Orisa), Team 1),
+            Vector(0.950, -0.310, 0.160),
+            To World
+        );
+        Press Button(Players On Hero(Hero(Orisa), Team 1), Ability 2);
+    }
+}
+
+
+
+rule("Point6")
+{
+    event
+    {
+        Ongoing - Global;
+    }
+
+    conditions
+    {
+        Payload Progress Percentage > 80;
+        Global Variable(Point6) == False;
+    }
+
+    actions
+    {
+        Set Global Variable At Index(
+            PointArray,
+            0,
+            Vector(-36.870, 1.750, -109.720)
+        );
+        Allow Button(Players On Hero(Hero(Bastion), Team 1), Ability 1);
+        Create Dummy Bot(
+            Hero(D.Va),
+            Team 1,
+            Count Of(All Players(Team 1)),
+            Payload Position,
+            Vector(0, 0, 0)
+        );
+        Set Global Variable(Point6, True);
+        Teleport(
+            Players On Hero(Hero(Bastion), Team 1),
+            Vector(-36.870, 1.750, -109.720)
+        );
+        Teleport(
+            Players On Hero(Hero(Orisa), Team 1),
+            Vector(-36.210, 1.750, -111.760)
+        );
+        Press Button(Players On Hero(Hero(Bastion), Team 1), Ability 1);
+        Wait(0.500, Ignore Condition);
+        Disallow Button(Players On Hero(Hero(Bastion), Team 1), Ability 1);
+        Wait(0.500, Ignore Condition);
+        Set Facing(
+            Players On Hero(Hero(Orisa), Team 1),
+            Vector(-0.390, -0.260, 0.880),
+            To World
+        );
+        Press Button(Players On Hero(Hero(Orisa), Team 1), Ability 2);
+    }
+}
+
+
+
+rule("Point7")
+{
+    event
+    {
+        Ongoing - Global;
+    }
+
+    conditions
+    {
+        Payload Progress Percentage > 93;
+        Global Variable(Point7) == False;
+    }
+
+    actions
+    {
+        Set Global Variable At Index(
+            PointArray,
+            0,
+            Vector(-65.210, 2.750, -139.250)
+        );
+        Allow Button(Players On Hero(Hero(Bastion), Team 1), Ability 1);
+        Create Dummy Bot(
+            Hero(D.Va),
+            Team 1,
+            Count Of(All Players(Team 1)),
+            Payload Position,
+            Vector(0, 0, 0)
+        );
+        Set Global Variable(Point7, True);
+        Teleport(
+            Players On Hero(Hero(Bastion), Team 1),
+            Vector(-62.010, 2.750, -138.210)
+        );
+        Teleport(
+            Players On Hero(Hero(Orisa), Team 1),
+            Vector(-65.210, 2.750, -139.250)
+        );
+        Press Button(Players On Hero(Hero(Bastion), Team 1), Ability 1);
+        Wait(0.500, Ignore Condition);
+        Disallow Button(Players On Hero(Hero(Bastion), Team 1), Ability 1);
+        Wait(0.500, Ignore Condition);
+        Set Facing(
+            Players On Hero(Hero(Orisa), Team 1),
+            Vector(0.690, -0.340, 0.640),
+            To World
+        );
+        Press Button(Players On Hero(Hero(Orisa), Team 1), Ability 2);
+    }
+}
+
+
+
+disabled rule("Testing")
+{
+    event
+    {
+        Ongoing - Global;
+    }
+}
+
+
+
+disabled rule("Spawn Rein bot (comm)")
+{
+    event
+    {
+        Ongoing - Each Player;
+        All;
+        All;
+    }
+
+    conditions
+    {
+        Is Communicating Any(Event Player) == True;
+    }
+
+    actions
+    {
+        Create Dummy Bot(
+            Hero(Reinhardt),
+            Team 2,
+            3,
+            Position Of(Event Player),
+            Facing Direction Of(Event Player)
+        );
+    }
+}
+
+
+
+disabled rule("Show position and facing direction")
+{
+    event
+    {
+        Ongoing - Each Player;
+        All;
+        All;
+    }
+
+    actions
+    {
+        Create HUD Text(
+            All Players(All Teams),
+            Custom String("{0}", Event Player, Null, Null),
+            Custom String("Pos={0}", Position Of(Event Player), Null, Null),
+            Custom String(
+                "Facing={0}",
+                Facing Direction Of(Event Player),
+                Null,
+                Null
+            ),
+            Left,
+            0,
+            White,
+            White,
+            White,
+            Visible To and String,
+            Default Visibility
+        );
+    }
+}
+
+
+
+disabled rule("Server stats")
+{
+    event
+    {
+        Ongoing - Global;
+    }
+
+    actions
+    {
+        Create HUD Text(
+            All Players(All Teams),
+            Custom String("Load: {0}", Server Load, Null, Null),
+            Null,
+            Null,
+            Left,
+            0,
+            White,
+            White,
+            White,
+            Visible To and String,
+            Default Visibility
+        );
+        Create HUD Text(
+            All Players(All Teams),
+            Custom String("Avg: {0}", Server Load Average, Null, Null),
+            Null,
+            Null,
+            Left,
+            0,
+            White,
+            White,
+            White,
+            Visible To and String,
+            Default Visibility
+        );
+        Create HUD Text(
+            All Players(All Teams),
+            Custom String("Peak: {0}", Server Load Peak, Null, Null),
+            Null,
+            Null,
+            Left,
+            0,
+            White,
+            White,
+            White,
+            Visible To and String,
+            Default Visibility
+        );
+    }
+}
+
+

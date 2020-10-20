@@ -1,0 +1,485 @@
+settings
+{
+    main
+    {
+        Description: "On various DM maps, there are non-spawn zones that are inaccessible. Define these areas with spheres. Seasonal map variants have been excluded. I's preferred you be generous with your spheres rather than fail to cover certain areas. This task is necessary because Nearest Walkable Position is an unreliable function."
+    }
+
+    lobby
+    {
+        Match Voice Chat: Enabled
+        Max FFA Players: 2
+        Max Spectators: 12
+    }
+
+    modes
+    {
+        Deathmatch
+        {
+            enabled maps
+            {
+                King's Row
+            }
+        }
+
+        disabled Elimination
+        {
+            Score To Win: 1
+        }
+
+        General
+        {
+            Game Mode Start: Immediately
+            Spawn Health Packs: Disabled
+        }
+    }
+}
+
+
+
+variables
+{
+    global:
+        0: sphere_pos
+        1: sphere_rad
+        2: sphere_record
+}
+
+
+
+rule("Skip assembly")
+{
+    event
+    {
+        Ongoing - Global;
+    }
+
+    conditions
+    {
+        Is Assembling Heroes == True;
+    }
+
+    actions
+    {
+        Set Match Time(0);
+    }
+}
+
+
+
+rule("Game settings")
+{
+    event
+    {
+        Ongoing - Global;
+    }
+
+    conditions
+    {
+        Is Game In Progress == True;
+    }
+
+    actions
+    {
+        Disable Inspector Recording;
+        Disable Built-In Game Mode Completion;
+        Disable Built-In Game Mode Announcer;
+        Disable Built-In Game Mode Scoring;
+        Set Match Time(0);
+        Set Global Variable(sphere_rad, 5);
+        Set Global Variable(sphere_record, Empty Array);
+    }
+}
+
+
+
+rule("Player settings")
+{
+    event
+    {
+        Ongoing - Each Player;
+        All;
+        All;
+    }
+
+    actions
+    {
+        Set Gravity(Event Player, 0);
+    }
+}
+
+
+
+rule("UI")
+{
+    event
+    {
+        Ongoing - Each Player;
+        All;
+        All;
+    }
+
+    actions
+    {
+        "Left"
+        Create HUD Text(
+            All Players(All Teams),
+            Custom String(
+                "Sphere: {pos = {0}, rad = {1}}",
+                Global Variable(sphere_pos),
+                Global Variable(sphere_rad),
+                Null
+            ),
+            Null,
+            Null,
+            Left,
+            0,
+            White,
+            White,
+            White,
+            Visible To and String,
+            Default Visibility
+        );
+        Create HUD Text(
+            All Players(All Teams),
+            Custom String(
+                "Position: {0}",
+                Position Of(Event Player),
+                Null,
+                Null
+            ),
+            Null,
+            Null,
+            Left,
+            0,
+            White,
+            White,
+            White,
+            Visible To and String,
+            Default Visibility
+        );
+        Create HUD Text(
+            All Players(All Teams),
+            Custom String(
+                "Nearest walkable position: {0}",
+                Nearest Walkable Position(Position Of(Event Player)),
+                Null,
+                Null
+            ),
+            Null,
+            Null,
+            Left,
+            0,
+            White,
+            White,
+            White,
+            Visible To and String,
+            Default Visibility
+        );
+
+        "Right"
+        Create HUD Text(
+            All Players(All Teams),
+            Custom String(
+                "Inside spawn: {0}",
+                Is In Spawn Room(Event Player),
+                Null,
+                Null
+            ),
+            Null,
+            Null,
+            Right,
+            0,
+            White,
+            White,
+            White,
+            Visible To and String,
+            Default Visibility
+        );
+        Create HUD Text(
+            All Players(All Teams),
+            Custom String(
+                "Inside sphere: {0}",
+                Compare(
+                    Distance Between(
+                        Position Of(Event Player),
+                        Global Variable(sphere_pos)
+                    ),
+                    <=,
+                    Global Variable(sphere_rad)
+                ),
+                Null,
+                Null
+            ),
+            Null,
+            Null,
+            Right,
+            0,
+            White,
+            White,
+            White,
+            Visible To and String,
+            Default Visibility
+        );
+
+        "Effects"
+        Create Effect(
+            All Players(All Teams),
+            Sphere,
+            Blue,
+            Global Variable(sphere_pos),
+            Global Variable(sphere_rad),
+            Visible To Position and Radius
+        );
+    }
+}
+
+
+
+rule("Instant respawn")
+{
+    event
+    {
+        Player Died;
+        All;
+        All;
+    }
+
+    actions
+    {
+        Respawn(Event Player);
+    }
+}
+
+
+
+disabled rule("Movement controls")
+{
+    event
+    {
+        Ongoing - Global;
+    }
+}
+
+
+
+rule("Ascend (hold jump)")
+{
+    event
+    {
+        Ongoing - Each Player;
+        All;
+        All;
+    }
+
+    conditions
+    {
+        Is Button Held(Event Player, Jump) == True;
+    }
+
+    actions
+    {
+        Teleport(Event Player, Add(Position Of(Event Player), Up));
+        Wait(0.025, Ignore Condition);
+        Loop If Condition Is True;
+    }
+}
+
+
+
+rule("Descend (hold crouch)")
+{
+    event
+    {
+        Ongoing - Each Player;
+        All;
+        All;
+    }
+
+    conditions
+    {
+        Is Button Held(Event Player, Crouch) == True;
+    }
+
+    actions
+    {
+        Teleport(Event Player, Subtract(Position Of(Event Player), Up));
+        Wait(0.025, Ignore Condition);
+        Loop If Condition Is True;
+    }
+}
+
+
+
+rule("Teleport forward (hold interact)")
+{
+    event
+    {
+        Ongoing - Each Player;
+        All;
+        All;
+    }
+
+    conditions
+    {
+        Is Button Held(Event Player, Interact) == True;
+    }
+
+    actions
+    {
+        Teleport(
+            Event Player,
+            Add(Position Of(Event Player), Facing Direction Of(Event Player))
+        );
+        Wait(0.025, Ignore Condition);
+        Loop If Condition Is True;
+    }
+}
+
+
+
+rule("Cancel momentum (melee)")
+{
+    event
+    {
+        Ongoing - Each Player;
+        All;
+        All;
+    }
+
+    conditions
+    {
+        Is Button Held(Event Player, Melee) == True;
+    }
+
+    actions
+    {
+        Apply Impulse(
+            Event Player,
+            Multiply(-1.000, Velocity Of(Event Player)),
+            Square Root(
+                Dot Product(
+                    Velocity Of(Event Player),
+                    Velocity Of(Event Player)
+                )
+            ),
+            To World,
+            Incorporate Contrary Motion
+        );
+    }
+}
+
+
+
+disabled rule("Sphere controls")
+{
+    event
+    {
+        Ongoing - Global;
+    }
+}
+
+
+
+rule("Shrink sphere (hold a1)")
+{
+    event
+    {
+        Ongoing - Each Player;
+        All;
+        All;
+    }
+
+    conditions
+    {
+        Is Button Held(Event Player, Ability 1) == True;
+    }
+
+    actions
+    {
+        Modify Global Variable(sphere_rad, Subtract, 0.100);
+        Wait(0.025, Ignore Condition);
+        Loop If Condition Is True;
+    }
+}
+
+
+
+rule("Grow sphere (hold a2)")
+{
+    event
+    {
+        Ongoing - Each Player;
+        All;
+        All;
+    }
+
+    conditions
+    {
+        Is Button Held(Event Player, Ability 2) == True;
+    }
+
+    actions
+    {
+        Modify Global Variable(sphere_rad, Add, 0.100);
+        Wait(0.025, Ignore Condition);
+        Loop If Condition Is True;
+    }
+}
+
+
+
+rule("Reposition sphere (reload)")
+{
+    event
+    {
+        Ongoing - Each Player;
+        All;
+        All;
+    }
+
+    conditions
+    {
+        Is Button Held(Event Player, Reload) == True;
+    }
+
+    actions
+    {
+        Set Global Variable(sphere_pos, Position Of(Event Player));
+    }
+}
+
+
+
+rule("Record sphere (ult)")
+{
+    event
+    {
+        Ongoing - Each Player;
+        All;
+        All;
+    }
+
+    conditions
+    {
+        Is Button Held(Event Player, Ultimate) == True;
+    }
+
+    actions
+    {
+        Enable Inspector Recording;
+        Modify Global Variable(
+            sphere_record,
+            Append To Array,
+            Global Variable(sphere_pos)
+        );
+        Modify Global Variable(
+            sphere_record,
+            Append To Array,
+            Global Variable(sphere_rad)
+        );
+        Disable Inspector Recording;
+    }
+}
+
+

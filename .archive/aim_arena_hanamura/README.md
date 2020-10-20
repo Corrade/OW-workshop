@@ -5,6 +5,8 @@
 # Aim Arena Hanamura
 A reconstruction of Beemoo's aim arena, set in Hanamura. Slimmer and faithful.
 
+
+
 ## Import codes
 - v1.0: QQSCD
 
@@ -16,6 +18,3 @@ A reconstruction of Beemoo's aim arena, set in Hanamura. Slimmer and faithful.
 - **Health check**: See how much health your opponent had remaining after they kill you.
 
 
-
-## Commands
-- **Interact (Crouch + Interact for Symmetra)**: Change heroes. You'll only lose a point if you're not at full health.

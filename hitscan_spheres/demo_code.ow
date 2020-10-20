@@ -1,34 +1,50 @@
+variables
+{
+    player:
+        0: hs_range
+        2: hs_center
+        17: hs_radius
+}
+
+
+
 rule("Main")
 {
-    event {
+    event
+    {
         Ongoing - Each Player;
         All;
         All;
     }
 
-    actions {
-        Set Player Variable(Event Player, A, 999);
-        Set Player Variable(Event Player, R, 1);
-
+    actions
+    {
+        Set Player Variable(Event Player, hs_range, 999);
+        Set Player Variable(Event Player, hs_radius, 1);
         Create HUD Text(
             All Players(All Teams),
             And(
                 And(
                     Compare(
                         Distance Between(
-                            Vector(0,0,0),
+                            Vector(0, 0, 0),
                             Subtract(
-                                Player Variable(Event Player, C),
+                                Player Variable(Event Player, hs_center),
                                 Add(
                                     Eye Position(Event Player),
                                     Multiply(
                                         Absolute Value(
                                             Dot Product(
                                                 Subtract(
-                                                    Player Variable(Event Player, C),
+                                                    Player Variable(
+                                                        Event Player,
+                                                        hs_center
+                                                    ),
                                                     Eye Position(Event Player)
                                                 ),
-                                                Facing Direction Of(Event Player)
+                                                Facing Direction Of(
+                                                    Event Player
+                                                )
                                             )
                                         ),
                                         Facing Direction Of(Event Player)
@@ -37,7 +53,7 @@ rule("Main")
                             )
                         ),
                         <=,
-                        Player Variable(Event Player, R)
+                        Player Variable(Event Player, hs_radius)
                     ),
                     Compare(
                         Is In Line of Sight(
@@ -47,7 +63,10 @@ rule("Main")
                                     Absolute Value(
                                         Dot Product(
                                             Subtract(
-                                                Player Variable(Event Player, C),
+                                                Player Variable(
+                                                    Event Player,
+                                                    hs_center
+                                                ),
                                                 Eye Position(Event Player)
                                             ),
                                             Facing Direction Of(Event Player)
@@ -71,7 +90,10 @@ rule("Main")
                                 Absolute Value(
                                     Dot Product(
                                         Subtract(
-                                            Player Variable(Event Player, C),
+                                            Player Variable(
+                                                Event Player,
+                                                hs_center
+                                            ),
                                             Eye Position(Event Player)
                                         ),
                                         Facing Direction Of(Event Player)
@@ -83,29 +105,50 @@ rule("Main")
                         Eye Position(Event Player)
                     ),
                     <=,
-                    Player Variable(Event Player, A)
+                    Player Variable(Event Player, hs_range)
                 )
             ),
-            Null, Null, Top, 999, White, White, White, Visible To and String
+            Null,
+            Null,
+            Top,
+            999,
+            White,
+            White,
+            White,
+            Visible To and String,
+            Default Visibility
         );
-
-        Create Effect(All Players(All Teams), Sphere, Blue, Player Variable(Event Player, C), Divide(Player Variable(Event Player, R), 0.98472), Visible To Position and Radius);
+        Create Effect(
+            All Players(All Teams),
+            Sphere,
+            Blue,
+            Player Variable(Event Player, hs_center),
+            Divide(Player Variable(Event Player, hs_radius), 0.985),
+            Visible To Position and Radius
+        );
     }
 }
 
+
+
 rule("Update C")
 {
-    event {
+    event
+    {
         Ongoing - Each Player;
         All;
         All;
     }
 
-    conditions {
+    conditions
+    {
         Is Button Held(Event Player, Ability 1) == True;
     }
 
-    actions {
-        Set Player Variable(Event Player, C, Position Of(Event Player));
+    actions
+    {
+        Set Player Variable(Event Player, hs_center, Position Of(Event Player));
     }
 }
+
+

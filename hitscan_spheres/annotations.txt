@@ -26,9 +26,9 @@ And(And(
     */
     Compare(
         Distance Between(
-            Vector(0,0,0),
+            Vector(0, 0, 0),
             Subtract(
-                Player Variable(Event Player, C),
+                Player Variable(Event Player, hs_center),
                 Add(
                     /*
                     Two things we left out:
@@ -54,7 +54,7 @@ And(And(
                         Absolute Value(
                             Dot Product(
                                 Subtract(
-                                    Player Variable(Event Player, C),
+                                    Player Variable(Event Player, hs_center),
                                     Eye Position(Event Player)
                                 ),
                                 Facing Direction Of(Event Player)
@@ -66,7 +66,7 @@ And(And(
             )
         ),
         <=,
-        Player Variable(Event Player, R)
+        Player Variable(Event Player, hs_radius)
     ),
     /*
     The next comparison is just an LOS check. We can implement this by
@@ -82,7 +82,7 @@ And(And(
                     Absolute Value(
                         Dot Product(
                             Subtract(
-                                Player Variable(Event Player, C),
+                                Player Variable(Event Player, hs_center),
                                 Eye Position(Event Player)
                             ),
                             Facing Direction Of(Event Player)
@@ -109,7 +109,7 @@ And(And(
                     Absolute Value(
                         Dot Product(
                             Subtract(
-                                Player Variable(Event Player, C),
+                                Player Variable(Event Player, hs_center),
                                 Eye Position(Event Player)
                             ),
                             Facing Direction Of(Event Player)
@@ -121,6 +121,6 @@ And(And(
             Eye Position(Event Player)
         ),
         <=,
-        Player Variable(Event Player, A)
+        Player Variable(Event Player, hs_range)
     )
 )

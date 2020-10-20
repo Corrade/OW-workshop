@@ -1,0 +1,224 @@
+variables
+{
+    global:
+        0: shield_distance
+        1: shield_width
+        2: shield_angle
+}
+
+
+
+rule("Shield")
+{
+    event
+    {
+        Ongoing - Each Player;
+        All;
+        All;
+    }
+
+    actions
+    {
+        Set Global Variable(shield_distance, 2);
+
+        "The real width is double this"
+        Set Global Variable(shield_width, 2);
+
+        "The central vertical line/height of the shield is described by points 'shield_angle' degrees below and above the point 'shield_distance' units along the player's facing direction"
+        Set Global Variable(shield_angle, 35);
+        Create Beam Effect(
+            All Living Players(All Teams),
+            Good Beam,
+            Add(
+                Add(
+                    Eye Position(Event Player),
+                    Multiply(
+                        Direction From Angles(
+                            Horizontal Facing Angle Of(Event Player),
+                            Add(
+                                Vertical Facing Angle Of(Event Player),
+                                Multiply(1, Global Variable(shield_angle))
+                            )
+                        ),
+                        Global Variable(shield_distance)
+                    )
+                ),
+                Multiply(
+                    Normalize(
+                        Cross Product(Facing Direction Of(Event Player), Up)
+                    ),
+                    Multiply(-1.000, Global Variable(shield_width))
+                )
+            ),
+            Add(
+                Add(
+                    Eye Position(Event Player),
+                    Multiply(
+                        Direction From Angles(
+                            Horizontal Facing Angle Of(Event Player),
+                            Add(
+                                Vertical Facing Angle Of(Event Player),
+                                Multiply(1, Global Variable(shield_angle))
+                            )
+                        ),
+                        Global Variable(shield_distance)
+                    )
+                ),
+                Multiply(
+                    Normalize(
+                        Cross Product(Facing Direction Of(Event Player), Up)
+                    ),
+                    Multiply(1, Global Variable(shield_width))
+                )
+            ),
+            White,
+            Visible To Position and Radius
+        );
+        Create Beam Effect(
+            All Living Players(All Teams),
+            Good Beam,
+            Add(
+                Add(
+                    Eye Position(Event Player),
+                    Multiply(
+                        Direction From Angles(
+                            Horizontal Facing Angle Of(Event Player),
+                            Add(
+                                Vertical Facing Angle Of(Event Player),
+                                Multiply(1, Global Variable(shield_angle))
+                            )
+                        ),
+                        Global Variable(shield_distance)
+                    )
+                ),
+                Multiply(
+                    Normalize(
+                        Cross Product(Facing Direction Of(Event Player), Up)
+                    ),
+                    Multiply(-1.000, Global Variable(shield_width))
+                )
+            ),
+            Add(
+                Add(
+                    Eye Position(Event Player),
+                    Multiply(
+                        Direction From Angles(
+                            Horizontal Facing Angle Of(Event Player),
+                            Add(
+                                Vertical Facing Angle Of(Event Player),
+                                Multiply(-1.000, Global Variable(shield_angle))
+                            )
+                        ),
+                        Global Variable(shield_distance)
+                    )
+                ),
+                Multiply(
+                    Normalize(
+                        Cross Product(Facing Direction Of(Event Player), Up)
+                    ),
+                    Multiply(-1.000, Global Variable(shield_width))
+                )
+            ),
+            White,
+            Visible To Position and Radius
+        );
+        Create Beam Effect(
+            All Living Players(All Teams),
+            Good Beam,
+            Add(
+                Add(
+                    Eye Position(Event Player),
+                    Multiply(
+                        Direction From Angles(
+                            Horizontal Facing Angle Of(Event Player),
+                            Add(
+                                Vertical Facing Angle Of(Event Player),
+                                Multiply(-1.000, Global Variable(shield_angle))
+                            )
+                        ),
+                        Global Variable(shield_distance)
+                    )
+                ),
+                Multiply(
+                    Normalize(
+                        Cross Product(Facing Direction Of(Event Player), Up)
+                    ),
+                    Multiply(1, Global Variable(shield_width))
+                )
+            ),
+            Add(
+                Add(
+                    Eye Position(Event Player),
+                    Multiply(
+                        Direction From Angles(
+                            Horizontal Facing Angle Of(Event Player),
+                            Add(
+                                Vertical Facing Angle Of(Event Player),
+                                Multiply(1, Global Variable(shield_angle))
+                            )
+                        ),
+                        Global Variable(shield_distance)
+                    )
+                ),
+                Multiply(
+                    Normalize(
+                        Cross Product(Facing Direction Of(Event Player), Up)
+                    ),
+                    Multiply(1, Global Variable(shield_width))
+                )
+            ),
+            White,
+            Visible To Position and Radius
+        );
+        Create Beam Effect(
+            All Living Players(All Teams),
+            Good Beam,
+            Add(
+                Add(
+                    Eye Position(Event Player),
+                    Multiply(
+                        Direction From Angles(
+                            Horizontal Facing Angle Of(Event Player),
+                            Add(
+                                Vertical Facing Angle Of(Event Player),
+                                Multiply(-1.000, Global Variable(shield_angle))
+                            )
+                        ),
+                        Global Variable(shield_distance)
+                    )
+                ),
+                Multiply(
+                    Normalize(
+                        Cross Product(Facing Direction Of(Event Player), Up)
+                    ),
+                    Multiply(1, Global Variable(shield_width))
+                )
+            ),
+            Add(
+                Add(
+                    Eye Position(Event Player),
+                    Multiply(
+                        Direction From Angles(
+                            Horizontal Facing Angle Of(Event Player),
+                            Add(
+                                Vertical Facing Angle Of(Event Player),
+                                Multiply(-1.000, Global Variable(shield_angle))
+                            )
+                        ),
+                        Global Variable(shield_distance)
+                    )
+                ),
+                Multiply(
+                    Normalize(
+                        Cross Product(Facing Direction Of(Event Player), Up)
+                    ),
+                    Multiply(-1.000, Global Variable(shield_width))
+                )
+            ),
+            White,
+            Visible To Position and Radius
+        );
+    }
+}
+
+
